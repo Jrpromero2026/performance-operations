@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { getActorContext } from "@/lib/actions/shared";
 import { hasPermissionInOrganization } from "@/lib/authz/authz";
-import type { MembershipGrant } from "@/lib/authz/authz";
-import type { RoleKey } from "@/lib/authz/permissions";
-import { WORKSPACE_COOKIE } from "@/lib/workspace/constants";
-import { PERIOD_COOKIE } from "@/lib/period/server";
+import { getWorkspaceContext } from "@/lib/workspace/server";
+import { getPeriodContext } from "@/lib/period/server";
 import { IntelligenceSession } from "@/lib/intelligence/service";
 import { formatMetricValue } from "@/lib/intelligence/format";
 
@@ -39,28 +36,27 @@ export async function GET() {
   const actor = await getActorContext();
   if (!actor) return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
 
-  const cookieStore = await cookies();
-  const organizationId = cookieStore.get(WORKSPACE_COOKIE)?.value ?? "";
-  const memberships: MembershipGrant[] = actor.memberships;
-  const validOrg = memberships.some(
-    (m) => m.organizationId === organizationId || m.roleKey === ("platform_admin" as RoleKey),
-  );
-  if (!organizationId || !validOrg) {
+  // Resolve workspace + period exactly like the app shell (validated
+  // server-side; cookies are requests, never trusted).
+  const workspace = await getWorkspaceContext();
+  if (workspace.mode !== "live" || workspace.selection.kind !== "organization") {
     return NextResponse.json({ error: "no_workspace_selected" }, { status: 400 });
   }
-  if (!hasPermissionInOrganization(memberships, organizationId, "appointment:read")) {
+  const organizationId = workspace.selection.organizationId;
+  if (!hasPermissionInOrganization(workspace.memberships, organizationId, "appointment:read")) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
-
-  const periodId = cookieStore.get(PERIOD_COOKIE)?.value ?? "";
-  const { data: period } = await actor.supabase
-    .from("reporting_periods")
-    .select("id, label, start_date, end_date, organization_id")
-    .eq("id", periodId)
-    .maybeSingle();
-  if (!period || period.organization_id !== organizationId) {
+  const periods = await getPeriodContext(workspace);
+  const selected = periods.selected;
+  if (!selected) {
     return NextResponse.json({ error: "no_period_selected" }, { status: 400 });
   }
+  const period = {
+    id: selected.id,
+    label: selected.label,
+    start_date: selected.startDate,
+    end_date: selected.endDate,
+  };
 
   const session = await IntelligenceSession.create(
     actor,

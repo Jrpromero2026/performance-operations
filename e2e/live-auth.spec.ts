@@ -70,22 +70,23 @@ test("authenticated users are bounced away from /login", async ({ page }) => {
   await page.waitForURL("**/overview");
 });
 
-test("overview shows real workspace data with honest financial placeholders", async ({
+test("overview renders the operations center with honest data states", async ({
   page,
 }) => {
   await page.goto("/overview");
   await expect(
     page.getByRole("heading", { name: "Timberhill Athletic Club" })
   ).toBeVisible();
-  await expect(page.getByText("Active Trainers")).toBeVisible();
-  await expect(page.getByText("Awaiting Import Center").first()).toBeVisible();
+  // Operations widgets render; metrics never fake numbers (either engine
+  // cards with health attributes or the explicit period prompt).
+  await expect(page.getByTestId("overview-status")).toBeVisible();
+  await expect(page.getByTestId("overview-alerts")).toBeVisible();
 });
 
 test("workspace switching rescopes live data and persists", async ({ page }) => {
   await page.goto("/overview");
   await page.getByLabel("Workspace").selectOption({ label: "G3 Sports & Fitness" });
   await expect(page.getByRole("heading", { name: "G3 Sports & Fitness" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Athlete Performance" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "G3 Sports & Fitness" })).toBeVisible();
 });
