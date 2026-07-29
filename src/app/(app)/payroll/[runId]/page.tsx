@@ -26,12 +26,26 @@ export default async function PayrollRunPage({
 
   const { data: run } = await actor.supabase
     .from("payroll_runs")
-    .select(
-      "*, organizations ( name ), reporting_periods ( label, start_date, end_date ), supersedes:payroll_runs!payroll_runs_supersedes_payroll_run_id_fkey ( id, name ), superseded_by:payroll_runs!payroll_runs_superseded_by_payroll_run_id_fkey ( id, name )",
-    )
+    .select("*, organizations ( name ), reporting_periods ( label, start_date, end_date )")
     .eq("id", runId)
     .maybeSingle();
   if (!run) notFound();
+
+  // Self-referential links loaded separately (a self-join embed is ambiguous
+  // to PostgREST because each FK matches in both directions).
+  async function runLink(id: string | null) {
+    if (!id) return null;
+    const { data } = await actor!.supabase
+      .from("payroll_runs")
+      .select("id, name")
+      .eq("id", id)
+      .maybeSingle();
+    return data;
+  }
+  const [supersedesRun, supersededByRun] = await Promise.all([
+    runLink(run.supersedes_payroll_run_id),
+    runLink(run.superseded_by_payroll_run_id),
+  ]);
   const orgId = run.organization_id;
   if (!hasPermissionInOrganization(context.memberships, orgId, "payroll:read")) {
     return <PermissionDenied title="Payroll run" />;
@@ -89,8 +103,8 @@ export default async function PayrollRunPage({
     start_date: string;
     end_date: string;
   } | null;
-  const supersedes = run.supersedes as unknown as { id: string; name: string } | null;
-  const supersededBy = run.superseded_by as unknown as { id: string; name: string } | null;
+  const supersedes = supersedesRun;
+  const supersededBy = supersededByRun;
   interface EventRow {
     from_status: string | null;
     to_status: string;
