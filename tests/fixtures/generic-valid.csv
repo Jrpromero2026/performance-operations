@@ -1,0 +1,4 @@
+Date,Start,End,Coach,Coach Email,Member,Member Email,Session Type,State,Price,Ref
+2025-12-01,09:00,10:00,Alex Fixture,alex.fixture@example.test,Casey Sample,casey.sample@example.test,Signature 60,done,64.00,GEN-001
+2025-12-02,10:00,10:30,Morgan Coach,morgan.coach@example.test,Jordan Demo,jordan.demo@example.test,Express 30,done,30.00,GEN-002
+2025-12-03,11:00,12:00,Alex Fixture,alex.fixture@example.test,Riley Tester,riley.tester@example.test,Signature 60,cancelled,64.00,GEN-003

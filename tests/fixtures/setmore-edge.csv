@@ -1,0 +1,9 @@
+Appointment date,Appointment time,Service/class/event,Cost,Team member,Customer name,Country code ,Phone,Email,Label,Status,Comments ,Booking ID,Booked via,Booked on ,Address,City,State,Country,Zipcode / Postal code
+1 Dec 2025,05:30 AM - 06:30 AM,"Coaching, Advanced | With, Commas",64,Alex Fixture,"Sample, Casey",1,5550000001,casey.sample@example.test,No label,Confirmed,"Line one
+line two comment",FIXBA001,iPhone app,7 May 2025 10:36 AM,,,,United States,
+32 Dec 2025,05:30 AM - 06:30 AM,Personal Coaching | Signature Package - 12x60 min.,64,Alex Fixture,Jordan Demo,1,5550000002,jordan.demo@example.test,No label,Confirmed,,FIXBB002,Calendar,8 Feb 2025 9:52 PM,,,,United States,
+2 Dec 2025,junk time,Personal Coaching | Signature Package - 12x60 min.,64,Alex Fixture,Jordan Demo,1,5550000002,jordan.demo@example.test,No label,Confirmed,,FIXBC003,Calendar,8 Feb 2025 9:52 PM,,,,United States,
+3 Dec 2025,06:00 AM - 07:00 AM,Personal Coaching | Signature Package - 12x60 min.,not-money,Alex Fixture,Jordan Demo,1,5550000002,jordan.demo@example.test,No label,Confirmed,,FIXBD004,Calendar,8 Feb 2025 9:52 PM,,,,United States,
+4 Dec 2025,06:00 AM - 07:00 AM,Personal Coaching | Signature Package - 12x60 min.,64,Alex Fixture,Jordan Demo,1,5550000002,jordan.demo@example.test,No label,Rescheduled by staff,,FIXBE005,Calendar,8 Feb 2025 9:52 PM,,,,United States,
+5 Dec 2025,06:00 AM - 07:00 AM,=HYPERLINK("https://evil.example/x"),64,Alex Fixture,Jordan Demo,1,5550000002,jordan.demo@example.test,No label,Confirmed,=1+2,FIXBF006,Calendar,8 Feb 2025 9:52 PM,,,,United States,
+6 Dec 2025,11:30 PM - 12:30 AM,Personal Coaching | Signature Package - 12x60 min.,64,Alex Fixture,Jordan Demo,1,5550000002,jordan.demo@example.test,No label,Confirmed,,FIXBG007,Calendar,8 Feb 2025 9:52 PM,,,,United States,
