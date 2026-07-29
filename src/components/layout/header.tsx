@@ -12,7 +12,7 @@ export function Header({ context }: { context: WorkspaceContext }) {
         Performance Operations
       </p>
       <div className="ml-auto flex items-center gap-2.5">
-        {context.source === "offline" && (
+        {context.mode === "offline" && (
           <span
             className="hidden md:inline-flex items-center rounded-full bg-warning-soft px-2.5 py-1 text-[11px] font-semibold text-warning"
             title="Supabase is not configured or no user is signed in; showing seed-mirroring preview data."
@@ -44,7 +44,11 @@ export function Header({ context }: { context: WorkspaceContext }) {
           </svg>
           No reporting period
         </button>
-        <UserMenu userName={context.userName} userEmail={context.userEmail} />
+        <UserMenu
+          userName={context.userName}
+          userEmail={context.userEmail}
+          canSignOut={context.mode === "live" && Boolean(context.userId)}
+        />
       </div>
     </header>
   );

@@ -42,7 +42,7 @@ export async function getOverviewData(
 ): Promise<OverviewData> {
   const supabase = await createSupabaseServerClient();
 
-  if (!supabase || context.source === "offline") {
+  if (!supabase || context.mode !== "live") {
     return offlineOverview(context);
   }
 

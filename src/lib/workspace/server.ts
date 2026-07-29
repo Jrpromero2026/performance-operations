@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { isOfflinePreviewEnabled, isSupabaseConfigured } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { canAccessAllWorkspaces, type MembershipGrant } from "@/lib/authz/authz";
 import type { RoleKey } from "@/lib/authz/permissions";
@@ -18,68 +19,78 @@ export interface WorkspaceOption {
   name: string;
 }
 
+/**
+ * How the app is running:
+ *  - `live`         — Supabase configured; real auth and data. The ONLY mode
+ *                     when production-style env vars are present.
+ *  - `offline`      — Supabase NOT configured AND the explicit dev flag set.
+ *  - `unconfigured` — Supabase NOT configured and no dev flag: setup required.
+ */
+export type AppMode = "live" | "offline" | "unconfigured";
+
 export interface WorkspaceContext {
-  /** Where this context came from. `database` = real, validated data. */
-  source: "database" | "offline";
+  mode: AppMode;
+  /** Authenticated user id (null when signed out or non-live mode). */
+  userId: string | null;
   /** Workspaces the current user may select. */
   options: WorkspaceOption[];
-  /** Whether the user may choose "All Workspaces". */
   canAccessAll: boolean;
   /** The validated, resolved selection (never trusts the raw cookie). */
   selection: WorkspaceSelection;
-  /** Convenience: the selected organization option, when one is selected. */
   selected: WorkspaceOption | null;
-  /** The signed-in user's memberships (empty in offline mode). */
   memberships: MembershipGrant[];
-  /** Display name of the signed-in user, when known. */
   userName: string | null;
   userEmail: string | null;
+}
+
+interface MembershipQueryRow {
+  organization_id: string;
+  is_default: boolean;
+  roles: { key: string } | null;
+  organizations: WorkspaceOption | null;
 }
 
 /**
  * Resolve the workspace context for the current request.
  *
- * Access is loaded server-side from the database (organization_memberships
- * joined to roles); the workspace cookie is only ever validated against that
- * list. When Supabase is not configured or nobody is signed in, the shell
- * falls back to an explicit offline preview context so development and E2E
- * tests can exercise navigation — clearly labeled, with no real data.
+ * Access is loaded server-side (organization_memberships joined to roles);
+ * the workspace cookie is only ever validated against that list. Department
+ * grants are loaded for department-scoped roles so downstream authorization
+ * can narrow correctly.
  */
 export async function getWorkspaceContext(): Promise<WorkspaceContext> {
   const cookieStore = await cookies();
   const requested = cookieStore.get(WORKSPACE_COOKIE)?.value ?? null;
 
+  if (!isSupabaseConfigured()) {
+    return isOfflinePreviewEnabled()
+      ? offlineContext(requested)
+      : emptyContext("unconfigured");
+  }
+
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return offlineContext(requested);
+  if (!supabase) return emptyContext("unconfigured");
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return offlineContext(requested);
+  if (!user) return emptyContext("live");
 
   const { data: membershipRows, error } = await supabase
     .from("organization_memberships")
     .select(
-      "organization_id, is_default, effective_to, roles ( key ), organizations ( id, slug, name )"
+      "organization_id, is_default, roles ( key ), organizations ( id, slug, name )"
     )
     .is("effective_to", null);
 
-  if (error || !membershipRows) return offlineContext(requested);
-
-  interface MembershipQueryRow {
-    organization_id: string;
-    is_default: boolean;
-    effective_to: string | null;
-    roles: { key: string } | null;
-    organizations: WorkspaceOption | null;
-  }
+  if (error || !membershipRows) return emptyContext("live", user.id);
 
   const memberships: MembershipGrant[] = [];
   const options = new Map<string, WorkspaceOption>();
   let defaultOrganizationId: string | null = null;
 
-  // PostgREST returns to-one embeds as objects; without generated types the
-  // inference defaults to arrays, hence the unknown hop.
+  // PostgREST returns to-one embeds as objects; the generated types keep the
+  // array-typed fallback for unnamed joins, hence the cast.
   for (const row of membershipRows as unknown as MembershipQueryRow[]) {
     const role = row.roles;
     const org = row.organizations;
@@ -93,16 +104,30 @@ export async function getWorkspaceContext(): Promise<WorkspaceContext> {
     if (row.is_default) defaultOrganizationId = row.organization_id;
   }
 
+  // Department grants for department-scoped roles.
+  if (memberships.some((m) => m.roleKey === "department_manager")) {
+    const { data: deptRows } = await supabase
+      .from("department_memberships")
+      .select("organization_id, department_id")
+      .is("effective_to", null);
+    for (const membership of memberships) {
+      if (membership.roleKey !== "department_manager") continue;
+      membership.departmentIds = (deptRows ?? [])
+        .filter((d) => d.organization_id === membership.organizationId)
+        .map((d) => d.department_id);
+    }
+  }
+
   const canAccessAll = canAccessAllWorkspaces(memberships);
 
-  // Platform admins may select any organization, not just their memberships.
+  // Platform admins may select any active organization.
   if (canAccessAll) {
     const { data: allOrgs } = await supabase
       .from("organizations")
       .select("id, slug, name")
       .eq("status", "active")
       .order("name");
-    for (const org of (allOrgs ?? []) as WorkspaceOption[]) {
+    for (const org of allOrgs ?? []) {
       options.set(org.id, { id: org.id, slug: org.slug, name: org.name });
     }
   }
@@ -114,8 +139,15 @@ export async function getWorkspaceContext(): Promise<WorkspaceContext> {
     canAccessAll,
   });
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", user.id)
+    .maybeSingle();
+
   return {
-    source: "database",
+    mode: "live",
+    userId: user.id,
     options: optionList,
     canAccessAll,
     selection,
@@ -125,15 +157,29 @@ export async function getWorkspaceContext(): Promise<WorkspaceContext> {
         : null,
     memberships,
     userName:
-      (user.user_metadata?.full_name as string | undefined) ?? null,
-    userEmail: user.email ?? null,
+      profile?.full_name ||
+      ((user.user_metadata?.full_name as string | undefined) ?? null),
+    userEmail: profile?.email ?? user.email ?? null,
+  };
+}
+
+function emptyContext(mode: AppMode, userId: string | null = null): WorkspaceContext {
+  return {
+    mode,
+    userId,
+    options: [],
+    canAccessAll: false,
+    selection: { kind: "none" },
+    selected: null,
+    memberships: [],
+    userName: null,
+    userEmail: null,
   };
 }
 
 /**
- * Offline preview context: bootstrap workspaces mirroring the seed data.
- * Grants "All Workspaces" so the full selector is exercisable; real
- * deployments always resolve through the database path above.
+ * Offline preview context (explicit dev flag only): bootstrap workspaces
+ * mirroring the seed. Never active when Supabase is configured.
  */
 function offlineContext(requested: string | null): WorkspaceContext {
   const options = BOOTSTRAP_WORKSPACES.map((w) => ({
@@ -147,7 +193,8 @@ function offlineContext(requested: string | null): WorkspaceContext {
     canAccessAll: true,
   });
   return {
-    source: "offline",
+    mode: "offline",
+    userId: null,
     options,
     canAccessAll: true,
     selection,

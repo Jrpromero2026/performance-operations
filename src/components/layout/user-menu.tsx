@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { signOut } from "@/lib/auth/actions";
 
 interface Props {
   userName: string | null;
   userEmail: string | null;
+  /** Live mode shows a real sign-out control. */
+  canSignOut: boolean;
 }
 
-/** Current-user menu. Sign-in flows arrive with Supabase Auth in Phase 2. */
-export function UserMenu({ userName, userEmail }: Props) {
+export function UserMenu({ userName, userEmail, canSignOut }: Props) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -28,15 +30,14 @@ export function UserMenu({ userName, userEmail }: Props) {
     };
   }, [open]);
 
-  const label = userName ?? "Not signed in";
-  const initials = userName
-    ? userName
-        .split(/\s+/)
-        .map((part) => part[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase()
-    : "–";
+  const label = userName ?? (userEmail ? userEmail : "Not signed in");
+  const initials = (userName ?? userEmail ?? "–")
+    .split(/[\s@]+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
   return (
     <div className="relative" ref={menuRef}>
@@ -75,15 +76,26 @@ export function UserMenu({ userName, userEmail }: Props) {
           <div className="px-3 py-2.5 border-b border-border">
             <p className="text-sm font-semibold text-ink">{label}</p>
             <p className="truncate text-xs text-ink-muted">
-              {userEmail ?? "Authentication is configured in Phase 2"}
+              {userEmail ?? "Offline preview — no session"}
             </p>
           </div>
-          <div className="px-3 py-2.5">
-            <p className="text-xs text-ink-muted">
-              Profile, preferences, and sign-out will appear here once
-              Supabase Auth is connected.
-            </p>
-          </div>
+          {canSignOut ? (
+            <form action={signOut} className="p-1">
+              <button
+                type="submit"
+                role="menuitem"
+                className="w-full rounded-[--radius-control] px-3 py-2 text-left text-sm font-medium text-ink hover:bg-surface-sunken"
+              >
+                Sign out
+              </button>
+            </form>
+          ) : (
+            <div className="px-3 py-2.5">
+              <p className="text-xs text-ink-muted">
+                Configure Supabase and sign in to manage your account.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
