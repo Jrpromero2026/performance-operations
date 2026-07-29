@@ -10,8 +10,10 @@ import {
   endTrainerOrganizationAssignment,
 } from "@/lib/actions/trainers";
 import { getActorContext } from "@/lib/actions/shared";
+import { getPeriodContext } from "@/lib/period/server";
 import { getWorkspaceContext } from "@/lib/workspace/server";
 import { AddDeptAssignmentForm, AddOrgAssignmentForm } from "./assignment-forms";
+import { TrainerPerformanceSection } from "./performance-section";
 
 export const metadata: Metadata = { title: "Trainer" };
 
@@ -108,6 +110,9 @@ export default async function TrainerDetailPage({
   );
 
   const identifiers = trainer.source_identifiers as Record<string, string>;
+  const periods = await getPeriodContext(context);
+  const performanceOrgId =
+    context.selection.kind === "organization" ? context.selection.organizationId : null;
 
   return (
     <div className="space-y-6">
@@ -136,6 +141,15 @@ export default async function TrainerDetailPage({
           </div>
         }
       />
+
+      {performanceOrgId && (
+        <TrainerPerformanceSection
+          actor={actor}
+          organizationId={performanceOrgId}
+          trainerId={trainer.id}
+          period={periods}
+        />
+      )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <section aria-label="Identity" className="rounded-[--radius-card] border border-border bg-surface p-4 shadow-sm">
