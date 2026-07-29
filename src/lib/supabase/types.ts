@@ -128,6 +128,7 @@ export type Database = {
           notes: string;
           organization_id: string;
           plan_id: string;
+          rounding_scope: string | null;
           status: string;
           tier_behavior: string;
           updated_at: string;
@@ -142,6 +143,7 @@ export type Database = {
           notes?: string;
           organization_id: string;
           plan_id: string;
+          rounding_scope?: string | null;
           status?: string;
           tier_behavior?: string;
           updated_at?: string;
@@ -156,6 +158,7 @@ export type Database = {
           notes?: string;
           organization_id?: string;
           plan_id?: string;
+          rounding_scope?: string | null;
           status?: string;
           tier_behavior?: string;
           updated_at?: string;
@@ -215,7 +218,9 @@ export type Database = {
       compensation_rules: {
         Row: {
           amount_cents: number | null;
+          basis_type: string | null;
           created_at: string;
+          criteria: Json;
           id: string;
           notes: string;
           organization_id: string;
@@ -226,7 +231,9 @@ export type Database = {
         };
         Insert: {
           amount_cents?: number | null;
+          basis_type?: string | null;
           created_at?: string;
+          criteria?: Json;
           id?: string;
           notes?: string;
           organization_id: string;
@@ -237,7 +244,9 @@ export type Database = {
         };
         Update: {
           amount_cents?: number | null;
+          basis_type?: string | null;
           created_at?: string;
+          criteria?: Json;
           id?: string;
           notes?: string;
           organization_id?: string;
@@ -1433,6 +1442,282 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      /* ------------------------------------------------------------------
+       * Phase 4 tables (hand-maintained to match migrations 14–15; compact
+       * form — Insert derived from Row; regenerate via Supabase gen-types
+       * for full fidelity when convenient).
+       * ---------------------------------------------------------------- */
+      appointment_trainer_assignments: {
+        Row: {
+          id: string; appointment_id: string; organization_id: string;
+          trainer_id: string; role: string; compensated_minutes: number | null;
+          allocation_basis: string | null; source: string;
+          confirmed_by: string | null; confirmed_at: string | null;
+          status: string; created_at: string; updated_at: string;
+        };
+        Insert: {
+          appointment_id: string; organization_id: string; trainer_id: string;
+        } & Partial<{
+          id: string; role: string; compensated_minutes: number | null;
+          allocation_basis: string | null; source: string;
+          confirmed_by: string | null; confirmed_at: string | null; status: string;
+        }>;
+        Update: Partial<{
+          role: string; compensated_minutes: number | null;
+          allocation_basis: string | null; confirmed_by: string | null;
+          confirmed_at: string | null; status: string;
+        }>;
+        Relationships: [];
+      };
+      payroll_runs: {
+        Row: {
+          id: string; organization_id: string; reporting_period_id: string;
+          name: string; run_number: number; status: string;
+          calculation_version: string; source_appointment_cutoff_at: string | null;
+          calculation_started_at: string | null; calculation_completed_at: string | null;
+          reviewed_by: string | null; reviewed_at: string | null;
+          approved_by: string | null; approved_at: string | null;
+          posted_by: string | null; posted_at: string | null;
+          locked_by: string | null; locked_at: string | null;
+          reopened_by: string | null; reopened_at: string | null;
+          reopen_reason: string | null;
+          voided_by: string | null; voided_at: string | null; void_reason: string | null;
+          supersedes_payroll_run_id: string | null;
+          superseded_by_payroll_run_id: string | null;
+          gross_compensation_total_cents: number; adjustment_total_cents: number;
+          final_compensation_total_cents: number; trainer_count: number;
+          appointment_count: number; blocking_issue_count: number;
+          warning_count: number; failure_code: string | null;
+          sanitized_failure_message: string | null; metadata: Json;
+          created_by: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          organization_id: string; reporting_period_id: string; name: string;
+          created_by: string;
+        } & Partial<{
+          id: string; run_number: number; status: string; calculation_version: string;
+          source_appointment_cutoff_at: string | null;
+          supersedes_payroll_run_id: string | null; metadata: Json;
+        }>;
+        Update: Partial<{
+          name: string; status: string;
+          source_appointment_cutoff_at: string | null;
+          calculation_started_at: string | null; calculation_completed_at: string | null;
+          reviewed_by: string | null; reviewed_at: string | null;
+          approved_by: string | null; approved_at: string | null;
+          gross_compensation_total_cents: number; adjustment_total_cents: number;
+          final_compensation_total_cents: number; trainer_count: number;
+          appointment_count: number; blocking_issue_count: number;
+          warning_count: number; failure_code: string | null;
+          sanitized_failure_message: string | null; metadata: Json;
+        }>;
+        Relationships: [];
+      };
+      payroll_run_events: {
+        Row: {
+          id: string; payroll_run_id: string; organization_id: string;
+          from_status: string | null; to_status: string; actor_id: string | null;
+          reason: string | null; created_at: string;
+        };
+        Insert: {
+          payroll_run_id: string; organization_id: string; to_status: string;
+        } & Partial<{
+          id: string; from_status: string | null; actor_id: string | null;
+          reason: string | null;
+        }>;
+        Update: never;
+        Relationships: [];
+      };
+      payroll_trainer_summaries: {
+        Row: {
+          id: string; payroll_run_id: string; organization_id: string;
+          trainer_id: string; compensation_assignment_id: string | null;
+          compensation_plan_version_id: string | null; calculation_status: string;
+          appointment_count: number; completed_session_count: number;
+          compensated_minutes: number; eligible_basis_total_cents: number;
+          commission_compensation_cents: number; flat_rate_compensation_cents: number;
+          hourly_compensation_cents: number; team_compensation_cents: number;
+          bonus_total_cents: number; deduction_total_cents: number;
+          adjustment_total_cents: number; final_gross_compensation_cents: number;
+          blocking_issue_count: number; warning_count: number;
+          review_status: string; reviewed_by: string | null; reviewed_at: string | null;
+          notes: string; created_at: string; updated_at: string;
+        };
+        Insert: {
+          payroll_run_id: string; organization_id: string; trainer_id: string;
+        } & Partial<{
+          id: string; compensation_assignment_id: string | null;
+          compensation_plan_version_id: string | null; calculation_status: string;
+          appointment_count: number; completed_session_count: number;
+          compensated_minutes: number; eligible_basis_total_cents: number;
+          commission_compensation_cents: number; flat_rate_compensation_cents: number;
+          hourly_compensation_cents: number; team_compensation_cents: number;
+          bonus_total_cents: number; deduction_total_cents: number;
+          adjustment_total_cents: number; final_gross_compensation_cents: number;
+          blocking_issue_count: number; warning_count: number; notes: string;
+        }>;
+        Update: Partial<{
+          compensation_assignment_id: string | null;
+          compensation_plan_version_id: string | null; calculation_status: string;
+          appointment_count: number; completed_session_count: number;
+          compensated_minutes: number; eligible_basis_total_cents: number;
+          commission_compensation_cents: number; flat_rate_compensation_cents: number;
+          hourly_compensation_cents: number; team_compensation_cents: number;
+          bonus_total_cents: number; deduction_total_cents: number;
+          adjustment_total_cents: number; final_gross_compensation_cents: number;
+          blocking_issue_count: number; warning_count: number;
+          review_status: string; reviewed_by: string | null; reviewed_at: string | null;
+          notes: string;
+        }>;
+        Relationships: [];
+      };
+      payroll_calculation_lines: {
+        Row: {
+          id: string; payroll_run_id: string; trainer_summary_id: string;
+          organization_id: string; trainer_id: string;
+          appointment_id: string | null;
+          appointment_trainer_assignment_id: string | null;
+          manual_time_entry_id: string | null; payroll_adjustment_id: string | null;
+          compensation_plan_version_id: string | null;
+          compensation_rule_id: string | null; line_type: string;
+          calculation_status: string; input_quantity: number | null;
+          input_unit: string | null; basis_amount_cents: number | null;
+          rate_amount_cents: number | null; rate_basis_points: number | null;
+          calculated_amount_cents: number; rounded_amount_cents: number;
+          rounding_method: string; eligibility_result: string;
+          exclusion_reason: string | null; calculation_formula_version: string;
+          calculation_trace: Json; created_at: string;
+        };
+        Insert: {
+          payroll_run_id: string; trainer_summary_id: string;
+          organization_id: string; trainer_id: string; line_type: string;
+        } & Partial<{
+          id: string; appointment_id: string | null;
+          appointment_trainer_assignment_id: string | null;
+          manual_time_entry_id: string | null; payroll_adjustment_id: string | null;
+          compensation_plan_version_id: string | null;
+          compensation_rule_id: string | null; calculation_status: string;
+          input_quantity: number | null; input_unit: string | null;
+          basis_amount_cents: number | null; rate_amount_cents: number | null;
+          rate_basis_points: number | null; calculated_amount_cents: number;
+          rounded_amount_cents: number; rounding_method: string;
+          eligibility_result: string; exclusion_reason: string | null;
+          calculation_formula_version: string; calculation_trace: Json;
+        }>;
+        Update: never; // recalculation deletes + reinserts while the run is mutable
+        Relationships: [];
+      };
+      payroll_issues: {
+        Row: {
+          id: string; payroll_run_id: string; organization_id: string;
+          trainer_id: string | null; appointment_id: string | null;
+          compensation_rule_id: string | null; code: string; severity: string;
+          entity_type: string | null; entity_id: string | null; message: string;
+          suggested_action: string | null; resolution_status: string;
+          resolution_reason: string | null; resolved_by: string | null;
+          resolved_at: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          payroll_run_id: string; organization_id: string; code: string;
+          severity: string; message: string;
+        } & Partial<{
+          id: string; trainer_id: string | null; appointment_id: string | null;
+          compensation_rule_id: string | null; entity_type: string | null;
+          entity_id: string | null; suggested_action: string | null;
+          resolution_status: string;
+        }>;
+        Update: Partial<{
+          resolution_status: string; resolution_reason: string | null;
+          resolved_by: string | null; resolved_at: string | null;
+        }>;
+        Relationships: [];
+      };
+      manual_time_entries: {
+        Row: {
+          id: string; organization_id: string; trainer_id: string;
+          reporting_period_id: string; work_date: string; work_category: string;
+          description: string; requested_minutes: number;
+          approved_minutes: number | null; compensation_purpose: string;
+          status: string; submitted_by: string | null; submitted_at: string | null;
+          approved_by: string | null; approved_at: string | null;
+          rejected_by: string | null; rejected_at: string | null;
+          rejection_reason: string | null; payroll_run_id: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          organization_id: string; trainer_id: string; reporting_period_id: string;
+          work_date: string; work_category: string; description: string;
+          requested_minutes: number;
+        } & Partial<{
+          id: string; approved_minutes: number | null; compensation_purpose: string;
+          status: string; submitted_by: string | null; submitted_at: string | null;
+        }>;
+        Update: Partial<{
+          work_date: string; work_category: string; description: string;
+          requested_minutes: number; approved_minutes: number | null;
+          compensation_purpose: string; status: string;
+          submitted_by: string | null; submitted_at: string | null;
+          approved_by: string | null; approved_at: string | null;
+          rejected_by: string | null; rejected_at: string | null;
+          rejection_reason: string | null; payroll_run_id: string | null;
+        }>;
+        Relationships: [];
+      };
+      payroll_adjustments: {
+        Row: {
+          id: string; organization_id: string; payroll_run_id: string | null;
+          reporting_period_id: string; trainer_id: string; adjustment_type: string;
+          amount_cents: number; reason: string; supporting_reference: string | null;
+          status: string; requested_by: string | null; requested_at: string | null;
+          approved_by: string | null; approved_at: string | null;
+          rejected_by: string | null; rejected_at: string | null;
+          rejection_reason: string | null; supersedes_adjustment_id: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          organization_id: string; reporting_period_id: string; trainer_id: string;
+          adjustment_type: string; amount_cents: number; reason: string;
+        } & Partial<{
+          id: string; payroll_run_id: string | null;
+          supporting_reference: string | null; status: string;
+          requested_by: string | null; requested_at: string | null;
+          supersedes_adjustment_id: string | null;
+        }>;
+        Update: Partial<{
+          adjustment_type: string; amount_cents: number; reason: string;
+          supporting_reference: string | null; status: string;
+          approved_by: string | null; approved_at: string | null;
+          rejected_by: string | null; rejected_at: string | null;
+          rejection_reason: string | null; payroll_run_id: string | null;
+        }>;
+        Relationships: [];
+      };
+      payroll_snapshots: {
+        Row: {
+          id: string; payroll_run_id: string; organization_id: string;
+          snapshot_version: number; kind: string; payload: Json;
+          lines_sha256: string; created_by: string | null; created_at: string;
+        };
+        Insert: never; // created only via post_payroll_run RPC
+        Update: never;
+        Relationships: [];
+      };
+      payroll_exports: {
+        Row: {
+          id: string; payroll_run_id: string; organization_id: string;
+          export_type: string; trainer_id: string | null;
+          snapshot_version: number | null; generated_by: string | null;
+          superseded: boolean; created_at: string;
+        };
+        Insert: {
+          payroll_run_id: string; organization_id: string; export_type: string;
+        } & Partial<{
+          id: string; trainer_id: string | null; snapshot_version: number | null;
+          generated_by: string | null;
+        }>;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -1458,6 +1743,34 @@ export type Database = {
           role_name: string;
           status: string;
           expires_at: string;
+        }[];
+      };
+      post_payroll_run: {
+        Args: { p_run_id: string };
+        Returns: Json;
+      };
+      lock_payroll_run: {
+        Args: { p_run_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      reopen_payroll_run: {
+        Args: { p_run_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      void_payroll_run: {
+        Args: { p_run_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      supersede_payroll_run: {
+        Args: { p_run_id: string; p_reason: string };
+        Returns: string;
+      };
+      payroll_dependencies_for_batch: {
+        Args: { p_batch_id: string };
+        Returns: {
+          payroll_run_id: string;
+          run_name: string;
+          run_status: string;
         }[];
       };
     };
@@ -1518,6 +1831,17 @@ export type CommissionTierRow = Tables<"commission_tiers">;
 export type CompensationRuleRow = Tables<"compensation_rules">;
 export type TrainerCompensationAssignmentRow =
   Tables<"trainer_compensation_assignments">;
+export type AppointmentTrainerAssignmentRow =
+  Tables<"appointment_trainer_assignments">;
+export type PayrollRunRow = Tables<"payroll_runs">;
+export type PayrollRunEventRow = Tables<"payroll_run_events">;
+export type PayrollTrainerSummaryRow = Tables<"payroll_trainer_summaries">;
+export type PayrollCalculationLineRow = Tables<"payroll_calculation_lines">;
+export type PayrollIssueRow = Tables<"payroll_issues">;
+export type ManualTimeEntryRow = Tables<"manual_time_entries">;
+export type PayrollAdjustmentRow = Tables<"payroll_adjustments">;
+export type PayrollSnapshotRow = Tables<"payroll_snapshots">;
+export type PayrollExportRow = Tables<"payroll_exports">;
 
 export type ReportingPeriodStatus = "draft" | "open" | "closed" | "locked";
 export type PeriodType = "monthly" | "semi_monthly" | "biweekly" | "custom";
