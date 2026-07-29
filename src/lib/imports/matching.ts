@@ -262,6 +262,7 @@ export function classifyDuplicate(
     if (active) {
       const sameSubstance =
         active.trainerId === (staged.matchedTrainerId ?? null) &&
+        active.serviceId === (staged.matchedServiceId ?? null) &&
         active.durationMinutes === (staged.durationMinutes ?? -1) &&
         active.canonicalStatus === (staged.canonicalStatus ?? "");
       if (sameSubstance) return "exact_duplicate";

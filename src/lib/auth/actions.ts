@@ -61,7 +61,9 @@ export async function signIn(
 
 export async function signOut(): Promise<void> {
   const supabase = await createSupabaseServerClient();
-  if (supabase) await supabase.auth.signOut();
+  // Local scope: signing out of this browser must not revoke the user's
+  // sessions on other devices.
+  if (supabase) await supabase.auth.signOut({ scope: "local" });
   redirect("/login");
 }
 

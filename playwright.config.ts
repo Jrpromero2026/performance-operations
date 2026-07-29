@@ -46,9 +46,19 @@ const offlineProjects = [
 const liveProjects = hasLiveEnv
   ? [
       {
+        name: "live-setup",
+        testMatch: /live\.setup\.ts/,
+        use: { ...devices["Desktop Chrome"], baseURL: "http://localhost:3000" },
+      },
+      {
         name: "live",
         testMatch: /live-.*\.spec\.ts/,
-        use: { ...devices["Desktop Chrome"], baseURL: "http://localhost:3000" },
+        dependencies: ["live-setup"],
+        use: {
+          ...devices["Desktop Chrome"],
+          baseURL: "http://localhost:3000",
+          storageState: "test-results/.auth/live-admin.json",
+        },
       },
     ]
   : [];

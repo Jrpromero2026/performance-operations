@@ -159,12 +159,18 @@ export async function stageBatch(
     if (error) throw new Error(`issue_insert_failed:${error.code}`);
   }
 
+  const { data: currentBatch } = await supabase
+    .from("import_batches")
+    .select("metadata")
+    .eq("id", batch.id)
+    .maybeSingle();
   await supabase
     .from("import_batches")
     .update({
       parsing_completed_at: new Date().toISOString(),
       total_row_count: inserts.length,
       metadata: {
+        ...((currentBatch?.metadata as Record<string, unknown>) ?? {}),
         parse_issues: parsed.issues.map((i) => ({ code: i.code, row: i.rowNumber ?? null })),
         delimiter: parsed.delimiter,
         had_bom: parsed.hadBom,
