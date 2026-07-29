@@ -21,6 +21,7 @@ import {
   transition,
 } from "@/lib/imports/pipeline";
 import { normalizeText } from "@/lib/imports/values";
+import { notifyPermissionHolders } from "@/lib/operations/notify";
 import type { Json } from "@/lib/supabase/types";
 import {
   getActorContext,
@@ -1037,6 +1038,14 @@ export async function postBatch(
   }
 
   const posted = (data as { posted_count?: number } | null)?.posted_count ?? 0;
+  await notifyPermissionHolders(actor, batch.organization_id, "import:approve", {
+    category: "imports",
+    title: `Import posted: ${batch.original_filename}`,
+    body: `${posted} appointment(s) added to the canonical ledger.`,
+    linkPath: `${IMPORTS_PATH}/${batch.id}`,
+    entityType: "import_batch",
+    entityId: batch.id,
+  });
   revalidatePath(IMPORTS_PATH);
   revalidatePath(`${IMPORTS_PATH}/${batch.id}`);
   revalidatePath("/appointments");
@@ -1073,6 +1082,15 @@ export async function reverseBatch(
     };
   }
   const reversed = (data as { reversed_count?: number } | null)?.reversed_count ?? 0;
+  await notifyPermissionHolders(actor, batch.organization_id, "import:approve", {
+    category: "imports",
+    severity: "warning",
+    title: `Import reversed: ${batch.original_filename}`,
+    body: `${reversed} appointment(s) reversed. Reason: ${parsed.data.reason}`,
+    linkPath: `${IMPORTS_PATH}/${batch.id}`,
+    entityType: "import_batch",
+    entityId: batch.id,
+  });
   revalidatePath(IMPORTS_PATH);
   revalidatePath(`${IMPORTS_PATH}/${batch.id}`);
   revalidatePath("/appointments");

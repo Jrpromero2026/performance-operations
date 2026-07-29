@@ -14,6 +14,7 @@ import {
 import { calculatePayroll } from "@/lib/payroll/engine";
 import { loadEngineData, persistEngineResult } from "@/lib/payroll/run";
 import { CALCULATION_VERSION } from "@/lib/payroll/types";
+import { notifyPermissionHolders } from "@/lib/operations/notify";
 
 const PAYROLL_PATH = "/payroll";
 
@@ -394,6 +395,14 @@ export async function approvePayrollRun(
     action: "payroll_run_approved",
     metadata: { final_total_cents: run.final_compensation_total_cents },
   });
+  await notifyPermissionHolders(actor, run.organization_id, "payroll:post", {
+    category: "payroll",
+    title: `Payroll approved: ${run.name}`,
+    body: "The run is approved and can now be posted.",
+    linkPath: `${PAYROLL_PATH}/${run.id}`,
+    entityType: "payroll_run",
+    entityId: run.id,
+  });
   revalidateRun(run.id);
   return { message: "Run approved. It can now be posted." };
 }
@@ -443,6 +452,7 @@ async function runRpc(
   ) => Promise<{ error: { message: string } | null; data?: unknown }>,
   successMessage: string,
   requireReason: boolean,
+  onSuccess?: (actor: ActorContext, run: PayrollRun, reason: string) => Promise<void>,
 ): Promise<ActionState> {
   const actor = await getActorContext();
   if (!actor) return NOT_SIGNED_IN;
@@ -468,6 +478,7 @@ async function runRpc(
     };
     return { error: friendly[code] ?? `Operation failed (${code}).` };
   }
+  if (onSuccess) await onSuccess(actor, run, reason);
   revalidateRun(runId);
   return { message: successMessage };
 }
@@ -483,6 +494,41 @@ export async function postPayrollRun(
       actor.supabase.rpc("post_payroll_run", { p_run_id: runId }),
     "Run posted. Calculation results are now frozen and statements are final.",
     false,
+    async (actor, run) => {
+      await notifyPermissionHolders(actor, run.organization_id, "payroll:approve", {
+        category: "payroll",
+        title: `Payroll posted: ${run.name}`,
+        body: "Results are frozen; statements are final.",
+        linkPath: `${PAYROLL_PATH}/${run.id}/statements`,
+        entityType: "payroll_run",
+        entityId: run.id,
+      });
+      // Trainers with a linked login get their statement notification.
+      const { data: summaries } = await actor.supabase
+        .from("payroll_trainer_summaries")
+        .select("trainer_id, trainers ( profile_id )")
+        .eq("payroll_run_id", run.id);
+      const rows = (summaries ?? []).flatMap((s) => {
+        const trainer = s.trainers as unknown as { profile_id: string | null } | null;
+        if (!trainer?.profile_id || trainer.profile_id === actor.userId) return [];
+        return [
+          {
+            recipient_id: trainer.profile_id,
+            organization_id: run.organization_id,
+            category: "payroll",
+            title: "Your payroll statement is ready",
+            body: `${run.name} was posted.`,
+            link_path: `${PAYROLL_PATH}/${run.id}/statements/${s.trainer_id}`,
+            entity_type: "payroll_run",
+            entity_id: run.id,
+            actor_id: actor.userId,
+          },
+        ];
+      });
+      if (rows.length > 0) {
+        await actor.supabase.from("notifications").insert(rows);
+      }
+    },
   );
 }
 
@@ -511,6 +557,17 @@ export async function reopenPayrollRun(
       actor.supabase.rpc("reopen_payroll_run", { p_run_id: runId, p_reason: reason }),
     "Run reopened. It must be recalculated, re-reviewed, and re-posted.",
     true,
+    async (actor, run, reason) => {
+      await notifyPermissionHolders(actor, run.organization_id, "payroll:review", {
+        category: "payroll",
+        severity: "warning",
+        title: `Payroll reopened: ${run.name}`,
+        body: `Reason: ${reason}. The run must be recalculated and re-posted.`,
+        linkPath: `${PAYROLL_PATH}/${run.id}`,
+        entityType: "payroll_run",
+        entityId: run.id,
+      });
+    },
   );
 }
 

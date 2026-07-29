@@ -5,7 +5,11 @@ import {
 } from "@/lib/intelligence/format";
 import type { MetricResult } from "@/lib/intelligence/shared/types";
 
-/** Presentational metric tile — renders exactly what the engine returned. */
+/**
+ * THE metric tile. Renders exactly what the intelligence engine returned —
+ * value, unit formatting, health badge, first reason/warning. Widgets never
+ * calculate metrics.
+ */
 export function MetricCard({
   result,
   label,

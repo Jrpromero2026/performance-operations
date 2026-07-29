@@ -13,7 +13,7 @@ import {
   HEALTH_LABEL,
 } from "@/lib/intelligence/format";
 import type { MetricBreakdown } from "@/lib/intelligence/shared/types";
-import { MetricCard } from "./metric-card";
+import { MetricCard } from "@/components/widgets/metric-card";
 
 export const metadata: Metadata = { title: "Reports" };
 
