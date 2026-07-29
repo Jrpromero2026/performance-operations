@@ -41,6 +41,12 @@
 | C32 | 2026-07-29 | Trainer self-scope on payroll rows requires the run to be posted/locked, enforced via security-definer status helper (migration 17) — draft figures are never trainer-visible. |
 | C33 | 2026-07-29 | Statements/exports use masked client references (date + service only); CSV via route handlers with export records; PDF = browser print; XLSX deferred as not practical this phase. |
 
+| C34 | 2026-07-29 | Every operational metric lives in the intelligence catalog (`intel-v1`) with a unique id, formula, dependencies, scopes, permissions, and version; the catalog enforces 1:1 definition⟷evaluator at load. No surface computes a metric itself. |
+| C35 | 2026-07-29 | Metric health states replace fake zeros: waiting_for_imports / waiting_for_payroll / configuration_missing / incomplete / unavailable, with reasons. A numeric 0 always means "pipeline has data, scope has none"; undefined ratios are null. |
+| C36 | 2026-07-29 | Intelligence revenue = source listed/paid over completed appointments only; eligible/recognized revenue stay `unavailable` until a business definition is approved. Payroll metrics read posted/locked runs only. Capacity utilization is configuration_missing until availability config exists. |
+| C37 | 2026-07-29 | Intelligence access narrows to org / department-scoped / self(none); trainer self scope is forced by the service and breakdowns are denied for self access; RLS re-enforces underneath (loader uses the actor's client). |
+| C38 | 2026-07-29 | Metrics calculate live; the dataset loader's fact shape is the designed cache/materialization boundary (client lifetime history first candidate). No caching built until needed. |
+
 ## Working Assumptions
 
 | # | Assumption | Revisit when |
