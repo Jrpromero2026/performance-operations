@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Sidebar } from "@/components/layout/sidebar";
+import { getPeriodContext } from "@/lib/period/server";
 import { getWorkspaceContext } from "@/lib/workspace/server";
 
 /**
@@ -23,11 +24,13 @@ export default async function AppLayout({
     redirect("/login");
   }
 
+  const periods = await getPeriodContext(context);
+
   return (
     <div className="flex min-h-dvh">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header context={context} />
+        <Header context={context} periods={periods} />
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>
