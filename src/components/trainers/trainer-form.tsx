@@ -39,7 +39,6 @@ export function TrainerForm({
 
   const {
     register,
-    watch,
     formState: { errors, isDirty },
   } = useForm<TrainerFormValues>({
     resolver: zodResolver(trainerClientSchema),
@@ -69,9 +68,6 @@ export function TrainerForm({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [isDirty]);
-
-  const selectedOrg = watch("firstName"); // keep RHF subscribed; org handled natively
-  void selectedOrg;
 
   const isCreate = Boolean(organizations && organizations.length > 0);
   const duplicateWarning = state.data?.duplicateWarning === "true";
