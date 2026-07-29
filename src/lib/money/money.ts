@@ -98,6 +98,33 @@ export function formatCents(amount: Cents, currency = "USD"): string {
 }
 
 /**
+ * Parse a percentage string ("50", "50.25", "55%") into integer basis points
+ * (50% → 5000 bp). Max two decimal places; no floating-point arithmetic.
+ */
+export function parseBasisPoints(input: string): BasisPoints {
+  const cleaned = input.replace(/[%\s]/g, "");
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(cleaned);
+  if (!match) throw new MoneyError(`Cannot parse percentage: ${input}`);
+  const [, whole, fraction = ""] = match;
+  const hundredths = (fraction + "00").slice(0, 2);
+  const bp = parseInt(whole, 10) * 100 + parseInt(hundredths, 10);
+  assertInteger(bp, "basis points");
+  if (bp > 10_000) {
+    throw new MoneyError("Percentage cannot exceed 100%.");
+  }
+  return bp;
+}
+
+/** Format basis points for display: 5025 → "50.25%", 5000 → "50%". */
+export function formatBasisPoints(bp: BasisPoints): string {
+  assertInteger(bp, "basis points");
+  const whole = Math.trunc(bp / 100);
+  const fraction = Math.abs(bp % 100);
+  if (fraction === 0) return `${whole}%`;
+  return `${whole}.${String(fraction).padStart(2, "0").replace(/0$/, "")}%`;
+}
+
+/**
  * Parse a currency string ("$1,234.56", "1234.5", "-12") into cents.
  * Rejects anything with more than two decimal places or non-numeric noise.
  */
