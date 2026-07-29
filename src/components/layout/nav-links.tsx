@@ -5,10 +5,19 @@ import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "./nav-items";
 
 /** Sidebar/mobile navigation list with active-route highlighting. */
-export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+export function NavLinks({
+  onNavigate,
+  collapsed = false,
+}: {
+  onNavigate?: () => void;
+  collapsed?: boolean;
+}) {
   const pathname = usePathname();
   return (
-    <nav aria-label="Main navigation" className="flex flex-col gap-0.5 px-3">
+    <nav
+      aria-label="Main navigation"
+      className={`flex flex-col gap-0.5 ${collapsed ? "px-2" : "px-3"}`}
+    >
       {NAV_ITEMS.map((item) => {
         const active =
           pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -18,7 +27,10 @@ export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             href={item.href}
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
-            className={`group flex items-center gap-3 rounded-[--radius-control] px-3 py-2 text-sm font-medium transition-colors ${
+            title={collapsed ? item.label : undefined}
+            className={`group flex items-center gap-3 rounded-[--radius-control] py-2 text-sm font-medium transition-colors ${
+              collapsed ? "justify-center px-0" : "px-3"
+            } ${
               active
                 ? "bg-nav-raised text-nav-fg shadow-[inset_2px_0_0_0_var(--color-accent)]"
                 : "text-nav-muted hover:bg-nav-raised/60 hover:text-nav-fg"
@@ -38,7 +50,7 @@ export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             >
               <path d={item.iconPath} />
             </svg>
-            {item.label}
+            {!collapsed && item.label}
           </Link>
         );
       })}
