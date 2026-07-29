@@ -16,6 +16,14 @@
 | C10 | 2026-07-28 | This repository, its Supabase project, and its deployment are fully independent of every other application (G3 Performance Testing, Built For Her, NovaKore, etc.). |
 | C11 | 2026-07-28 | No fake financial data anywhere — seeds and UI show real structure and explicit "waiting for imported data" states instead. |
 
+| C12 | 2026-07-29 | Live development database: dedicated Supabase project `performance-operations-dev` (yoolmtleaezprjmfasku). All migrations applied there verbatim; no other project is ever touched. |
+| C13 | 2026-07-29 | Invite-only authentication (no public self-registration). Invite tokens stored as sha256 hashes; acceptance is atomic via a documented security-definer function. |
+| C14 | 2026-07-29 | Role-grant escalation guards at both layers: server logic + RESTRICTIVE RLS (`app.can_grant_role`). Workspace admins cannot mint platform admins; self role-change and self-deactivation are blocked. |
+| C15 | 2026-07-29 | Reporting periods: same-type overlap forbidden by DB exclusion constraint; different types may coexist over the same dates. Locked periods require `payroll:reopen` (trigger-enforced). |
+| C16 | 2026-07-29 | Compensation versions freeze on publish (DB trigger); edits create new versions; assignments reference specific published versions with DB-level overlap exclusion per trainer/org/purpose. |
+| C17 | 2026-07-29 | Offline preview requires explicit `NEXT_PUBLIC_DEV_OFFLINE_PREVIEW=true` AND absent Supabase vars; it can never activate alongside real environment variables. |
+| C18 | 2026-07-29 | Service aliases are source-specific (setmore/acuity/manual_csv), normalized lowercase, unique per source+organization. |
+
 ## Working Assumptions
 
 | # | Assumption | Revisit when |
@@ -30,9 +38,20 @@
 
 ## Unresolved Decisions
 
+Do not encode assumptions for any of these into calculation logic.
+
 | # | Question | Needed from |
 | --- | --- | --- |
 | U1 | Exact commission structures, session rates, and tiers for each organization. | Compensation rules documents (see INPUTS_REQUIRED.md). |
+| U1a | Exact Timberhill payroll schedule (period boundaries, cutoffs, pay dates). | Business owners. |
+| U1b | Exact G3 payroll schedule. | Business owners. |
+| U1c | Whether Timberhill commission tiers are cliff or marginal. | Business owners. |
+| U1d | Which revenue counts toward commission tiers. | Business owners / accountant. |
+| U1e | Cancellation, late-cancellation, and no-show pay rules. | Business owners. |
+| U1f | Package revenue recognition. | Business owners / accountant. |
+| U1g | Team-training, PACK, and nutrition compensation structures. | Business owners. |
+| U1h | Evaluation bonuses and administrative-hour rates. | Business owners. |
+| U1i | Payroll adjustment approval rules. | Business owners. |
 | U2 | Which appointment statuses count as payable/billable, and cancellation/no-show pay rules. | Business owners. |
 | U3 | Reporting-period boundaries and lock cadence per organization. | Business owners. |
 | U4 | Revenue recognition: session-date vs payment-date, package/membership allocation. | Business owners / accountant. |

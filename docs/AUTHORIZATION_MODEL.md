@@ -106,6 +106,29 @@ data-access modules take a validated workspace context, not raw IDs.
 - `audit_events` has INSERT (scoped) and SELECT (scoped) policies only —
   no UPDATE or DELETE for anyone.
 
+## Phase 2 Additions
+
+- **Escalation guards.** `app.can_grant_role(org, role)` (security definer,
+  documented in migration 3) backs RESTRICTIVE policies on
+  `organization_memberships` and `invitations`: only platform admins can
+  grant `platform_admin`; `member:manage` grants everything else; all other
+  roles grant nothing. Server actions mirror the same logic
+  (`computeGrantableRoles`) and additionally block self role-changes and
+  self-deactivation.
+- **Invitations.** Managed with `member:manage`; the pre-auth preview and
+  atomic acceptance run through documented security-definer functions
+  (`app.get_invitation_preview`, `app.accept_invitation`) exposed via thin
+  `public` wrappers. The unguessable token is the credential; only its
+  sha256 hash is stored.
+- **Draft-only compensation edits.** Tier/rule policies require
+  `app.version_is_draft(version)`; `app.protect_published_version` (trigger)
+  freezes published versions even for platform admins.
+- **Locked periods.** `app.protect_locked_period` (trigger) requires
+  `payroll:reopen` to modify a locked reporting period, in addition to the
+  `period:manage` policy.
+- All new Phase 2 tables have RLS enabled **and forced**, per-command
+  policies, and no broad authenticated grants.
+
 ## Denial Behavior
 
 - Server helpers return typed failures; routes render a 404/permission-denied

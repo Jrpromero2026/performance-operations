@@ -19,9 +19,16 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. Without Supabase configured, the app runs in a
-clearly labeled **offline preview** that mirrors the seed structure (no real
-data, no authentication). This is fine for UI work and E2E tests.
+Open http://localhost:3000. The app is connected to the dedicated
+**performance-operations-dev** Supabase project via `.env.local` (never
+committed). Access is invite-only; the initial platform-admin credentials
+live in `.env.local` (`BOOTSTRAP_ADMIN_*` — change the password after first
+sign-in via Forgot password).
+
+Without Supabase configured, the app renders a setup-required screen. A
+UI-only **offline preview** exists strictly for development and E2E: it
+requires `NEXT_PUBLIC_DEV_OFFLINE_PREVIEW=true` *and* unset Supabase
+variables — it can never activate alongside real environment values.
 
 ## Supabase setup (dedicated project required)
 
@@ -66,7 +73,8 @@ signed in, the app stays in offline preview even with Supabase configured.
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript, no emit |
 | `npm test` | Vitest unit tests |
-| `npm run test:e2e` | Playwright E2E (needs `npx playwright install` once) |
+| `npm run test:e2e` | Playwright E2E — offline shell suite (:3100) then live suite (:3000), sequential because Next allows one dev server per directory |
+| `npm run test:e2e:offline` / `:live` | Run one E2E suite |
 
 ## Documentation
 
@@ -75,8 +83,12 @@ Start with [docs/PROJECT_CHARTER.md](docs/PROJECT_CHARTER.md), then
 [docs/DATA_MODEL_DRAFT.md](docs/DATA_MODEL_DRAFT.md),
 [docs/AUTHORIZATION_MODEL.md](docs/AUTHORIZATION_MODEL.md),
 [docs/IMPLEMENTATION_ROADMAP.md](docs/IMPLEMENTATION_ROADMAP.md),
-[docs/DECISION_LOG.md](docs/DECISION_LOG.md), and
-[docs/INPUTS_REQUIRED.md](docs/INPUTS_REQUIRED.md).
+[docs/DECISION_LOG.md](docs/DECISION_LOG.md),
+[docs/INPUTS_REQUIRED.md](docs/INPUTS_REQUIRED.md),
+[docs/AUTHENTICATION.md](docs/AUTHENTICATION.md),
+[docs/CONFIGURATION_MODEL.md](docs/CONFIGURATION_MODEL.md),
+[docs/COMPENSATION_MODEL.md](docs/COMPENSATION_MODEL.md), and
+[docs/PHASE_2_REPORT.md](docs/PHASE_2_REPORT.md).
 
 ## Security & financial integrity
 

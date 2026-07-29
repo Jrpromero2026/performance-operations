@@ -19,14 +19,32 @@
 | `reporting_periods` | Organization-scoped payroll/reporting windows with status |
 | `audit_events` | Append-only audit trail |
 
+## Phase 2 Entities (migrated and live)
+
+| Table | Purpose |
+| --- | --- |
+| `invitations` | Invite-only onboarding; sha256 token hashes; pending/accepted/revoked/expired |
+| `service_categories` | Org-scoped catalog headings (seeded per organization) |
+| `services` | Normalized appointment/revenue categories with classification flags and effective dates |
+| `service_department_assignments` | Effective-dated service ↔ department (composite-FK org-safe) |
+| `service_source_aliases` | Source-specific (setmore/acuity/manual_csv) names for import matching; normalized-unique per source+org |
+| `compensation_plans` | Org-scoped plan containers |
+| `compensation_plan_versions` | Immutable-when-published versions (method, tier behavior, effective dates) |
+| `commission_tiers` | Integer-cent revenue ranges + basis-point rates; DB overlap exclusion |
+| `compensation_rules` | Structured amount OR rate per rule type (no free-form JSON) |
+| `trainer_compensation_assignments` | Trainer ↔ published version per purpose; effective-dated; DB overlap exclusion |
+
+Phase 2 also extended `trainers` (names, phone, employment status,
+hire/separation dates, notes, `source_identifiers` JSONB, default org) and
+`reporting_periods` (`period_type`, `payment_date`, `notes`, per-type overlap
+exclusion, locked-period trigger).
+
 ## Future Planned Entities (not yet migrated)
 
-- `clients`, `services`, `service_department_map`
+- `clients`
 - `import_batches`, `import_rows_raw`, `appointment_candidates`,
-  `match_resolutions`, `alias_maps`
+  `match_resolutions`
 - `appointments` (posted, immutable)
-- `compensation_plans`, `compensation_plan_versions`,
-  `trainer_compensation_assignments` (effective-dated)
 - `payroll_runs`, `payroll_line_items`, `payroll_adjustments`,
   `payroll_state_transitions`
 - `kpi_snapshots`, `trainer_scorecards`

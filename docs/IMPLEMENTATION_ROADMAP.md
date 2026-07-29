@@ -1,6 +1,6 @@
 # Performance Operations — Implementation Roadmap
 
-## Phase 1 — Foundation (this phase)
+## Phase 1 — Foundation ✅ (complete)
 
 - Next.js application shell: sidebar, header, workspace selector, user menu,
   mobile navigation, loading/empty/error states
@@ -17,15 +17,18 @@
   coverage
 - Documentation set and environment setup
 
-## Phase 2 — Configuration
+## Phase 2 — Configuration ✅ (complete except noted)
 
-- Supabase Auth flows (invite-based sign-in, password reset)
-- Organization/location/department management UI
-- Member management (roles, department scoping, deactivation)
-- Trainer registry and organization/department assignments (effective-dated)
-- Service catalog and department mapping
-- Reporting-period management (create, open, close periods)
-- Client registry (minimal: name, status, organization)
+- ✅ Live dedicated Supabase dev project; migrations + seed applied; live RLS verified
+- ✅ Supabase Auth flows (invite-based onboarding, sign in/out, password reset)
+- ✅ Member management (roles, department scoping, deactivation, escalation guards)
+- ✅ Trainer registry and organization/department assignments (effective-dated)
+- ✅ Service catalog, department mapping, and source aliases
+- ✅ Reporting-period management + functional header period selector
+- ✅ Compensation plans/versions/tiers/rules + trainer assignments (config only)
+- ✅ Configuration hub with per-org readiness; real audit viewer; live overview
+- ⏳ Organization/location management UI (deferred; orgs seeded, platform-admin SQL/managed)
+- ⏳ Client registry (deferred to Import Center phase, where clients first matter)
 
 ## Phase 3 — Import Center
 
