@@ -1238,6 +1238,8 @@ export type Database = {
           reversed_by: string | null; reversed_at: string | null;
           failure_code: string | null; sanitized_failure_message: string | null;
           metadata: Json; created_at: string; updated_at: string;
+          created_via: string; integration_connection_id: string | null;
+          integration_sync_run_id: string | null;
         };
         Insert: {
           organization_id: string; source: string; original_filename: string;
@@ -1245,7 +1247,9 @@ export type Database = {
         } & Partial<{
           id: string; source_account_identifier: string | null; adapter_version: string;
           schema_profile_id: string | null; status: string; uploaded_by: string | null;
-          metadata: Json;
+          metadata: Json; created_via: string;
+          integration_connection_id: string | null;
+          integration_sync_run_id: string | null;
         }>;
         Update: Partial<{
           status: string; adapter_version: string; schema_profile_id: string | null;
@@ -1957,7 +1961,306 @@ export type Database = {
           department_id: string | null; saved_view_id: string | null;
           report_type: string; frequency: string; delivery_channel: string;
           recipients: Json; timezone: string; active: boolean;
+          execution_enabled: boolean;
           next_intended_run: string | null; last_intended_run: string | null;
+        }>;
+        Relationships: [];
+      };
+      /* ------------------------------------------- Phase 8: integrations */
+      integration_providers: {
+        Row: {
+          key: string; display_name: string; status: string;
+          adapter_version: string | null; docs_url: string | null;
+          docs_inspected_on: string | null; capabilities: Json;
+          blocked_reasons: Json; created_at: string; updated_at: string;
+        };
+        Insert: never; // catalog managed by migrations only
+        Update: never;
+        Relationships: [];
+      };
+      integration_connections: {
+        Row: {
+          id: string; organization_id: string; provider_key: string;
+          name: string; status: string; capabilities: Json;
+          secret_ref: string | null; secret_fingerprint: string | null;
+          secret_version: number; secret_rotated_at: string | null;
+          last_health_check_at: string | null; last_health_status: string | null;
+          failure_reason: string | null; created_by: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          organization_id: string; provider_key: string; name: string;
+          created_by: string;
+        } & Partial<{ id: string; status: string; capabilities: Json }>;
+        Update: Partial<{
+          name: string; status: string; capabilities: Json;
+          last_health_check_at: string | null; last_health_status: string | null;
+          failure_reason: string | null;
+        }>;
+        Relationships: [];
+      };
+      integration_sync_definitions: {
+        Row: {
+          id: string; connection_id: string; organization_id: string;
+          department_id: string | null; data_type: string;
+          window_strategy: string; window_days: number;
+          window_start: string | null; window_end: string | null;
+          mode: string; frequency: string; timezone: string; active: boolean;
+          auto_create_batch: boolean; auto_parse: boolean;
+          auto_validate: boolean; auto_approve: boolean; auto_post: boolean;
+          owner_id: string | null; last_successful_run_at: string | null;
+          next_intended_run_at: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          connection_id: string; organization_id: string;
+        } & Partial<{
+          id: string; department_id: string | null; data_type: string;
+          window_strategy: string; window_days: number;
+          window_start: string | null; window_end: string | null;
+          mode: string; frequency: string; timezone: string; active: boolean;
+          auto_create_batch: boolean; auto_parse: boolean;
+          auto_validate: boolean; owner_id: string | null;
+        }>;
+        Update: Partial<{
+          department_id: string | null; data_type: string;
+          window_strategy: string; window_days: number;
+          window_start: string | null; window_end: string | null;
+          mode: string; frequency: string; timezone: string; active: boolean;
+          auto_create_batch: boolean; auto_parse: boolean;
+          auto_validate: boolean; last_successful_run_at: string | null;
+          next_intended_run_at: string | null;
+        }>;
+        Relationships: [];
+      };
+      integration_sync_runs: {
+        Row: {
+          id: string; connection_id: string; definition_id: string | null;
+          organization_id: string; trigger_source: string; status: string;
+          started_at: string; completed_at: string | null;
+          cursor_before: string | null; cursor_after: string | null;
+          requested_window: Json; pages_fetched: number;
+          records_fetched: number; records_accepted: number;
+          records_rejected: number; records_unchanged: number;
+          import_batch_id: string | null; rate_limit_state: Json;
+          warnings: Json; failure_code: string | null;
+          failure_message: string | null; retry_count: number;
+          correlation_id: string; job_id: string | null; created_at: string;
+        };
+        Insert: {
+          connection_id: string; organization_id: string;
+        } & Partial<{
+          id: string; definition_id: string | null; trigger_source: string;
+          status: string; requested_window: Json; cursor_before: string | null;
+          job_id: string | null; retry_count: number;
+        }>;
+        Update: Partial<{
+          status: string; completed_at: string | null;
+          cursor_after: string | null; pages_fetched: number;
+          records_fetched: number; records_accepted: number;
+          records_rejected: number; records_unchanged: number;
+          import_batch_id: string | null; rate_limit_state: Json;
+          warnings: Json; failure_code: string | null;
+          failure_message: string | null;
+        }>;
+        Relationships: [];
+      };
+      integration_source_records: {
+        Row: {
+          id: string; organization_id: string; connection_id: string;
+          sync_run_id: string | null; data_type: string; external_id: string;
+          source_updated_at: string | null; payload: Json;
+          payload_sha256: string; received_at: string;
+        };
+        Insert: {
+          organization_id: string; connection_id: string; data_type: string;
+          external_id: string; payload: Json; payload_sha256: string;
+        } & Partial<{ id: string; sync_run_id: string | null; source_updated_at: string | null }>;
+        Update: never; // immutable evidence
+        Relationships: [];
+      };
+      integration_cursors: {
+        Row: {
+          id: string; connection_id: string; definition_id: string;
+          organization_id: string; data_type: string;
+          cursor_value: string | null; previous_value: string | null;
+          advanced_at: string | null; reset_by: string | null;
+          reset_reason: string | null; updated_at: string;
+        };
+        Insert: {
+          connection_id: string; definition_id: string;
+          organization_id: string; data_type: string;
+        } & Partial<{ id: string; cursor_value: string | null }>;
+        Update: Partial<{
+          cursor_value: string | null; previous_value: string | null;
+          advanced_at: string | null; reset_by: string | null;
+          reset_reason: string | null;
+        }>;
+        Relationships: [];
+      };
+      integration_webhook_endpoints: {
+        Row: {
+          id: string; connection_id: string; organization_id: string;
+          provider_key: string; token_sha256: string;
+          secret_ref: string | null; active: boolean;
+          created_by: string | null; created_at: string;
+        };
+        Insert: {
+          connection_id: string; organization_id: string;
+          provider_key: string; token_sha256: string; created_by: string;
+        } & Partial<{ id: string; active: boolean }>;
+        Update: Partial<{ active: boolean }>;
+        Relationships: [];
+      };
+      integration_webhook_events: {
+        Row: {
+          id: string; endpoint_id: string; connection_id: string;
+          organization_id: string; provider_event_id: string;
+          event_type: string; payload: Json; payload_sha256: string;
+          received_at: string; status: string;
+          rejection_reason: string | null; job_id: string | null;
+        };
+        Insert: {
+          endpoint_id: string; connection_id: string; organization_id: string;
+          provider_event_id: string; event_type: string;
+          payload_sha256: string;
+        } & Partial<{ id: string; payload: Json; status: string; rejection_reason: string | null }>;
+        Update: Partial<{ status: string; rejection_reason: string | null; job_id: string | null }>;
+        Relationships: [];
+      };
+      integration_failures: {
+        Row: {
+          id: string; organization_id: string; provider_key: string;
+          connection_id: string | null; job_id: string | null;
+          failure_code: string; retryable: boolean; message: string;
+          recommended_action: string; correlation_id: string | null;
+          first_seen_at: string; last_seen_at: string;
+          attempt_count: number; resolved: boolean; resolved_at: string | null;
+        };
+        Insert: {
+          organization_id: string; provider_key: string; failure_code: string;
+        } & Partial<{
+          id: string; connection_id: string | null; job_id: string | null;
+          retryable: boolean; message: string; recommended_action: string;
+          correlation_id: string | null; attempt_count: number;
+        }>;
+        Update: Partial<{
+          job_id: string | null; retryable: boolean; message: string;
+          recommended_action: string; last_seen_at: string;
+          attempt_count: number; resolved: boolean; resolved_at: string | null;
+        }>;
+        Relationships: [];
+      };
+      /* ---------------------------------------- Phase 8: jobs + delivery */
+      background_jobs: {
+        Row: {
+          id: string; organization_id: string; job_type: string;
+          status: string; payload: Json; payload_version: number;
+          idempotency_key: string; scheduled_for: string;
+          available_at: string; claimed_by: string | null;
+          claimed_at: string | null; lease_expires_at: string | null;
+          started_at: string | null; completed_at: string | null;
+          attempt_count: number; max_attempts: number;
+          last_error_code: string | null; last_error: string | null;
+          result: Json | null; parent_job_id: string | null;
+          correlation_id: string; created_by: string | null;
+          created_at: string;
+        };
+        Insert: never; // enqueue via RPC only
+        Update: never; // lifecycle via RPCs only
+        Relationships: [];
+      };
+      background_job_attempts: {
+        Row: {
+          id: string; job_id: string; organization_id: string;
+          attempt_number: number; worker_id: string; started_at: string;
+          finished_at: string | null; outcome: string | null;
+          error_code: string | null; error_message: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      delivery_channels: {
+        Row: {
+          id: string; organization_id: string; channel_type: string;
+          provider: string; status: string; sender_address: string | null;
+          sender_name: string | null; config: Json; secret_ref: string | null;
+          allow_external_recipients: boolean;
+          allow_trainer_statements: boolean; updated_by: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          organization_id: string;
+        } & Partial<{
+          id: string; channel_type: string; provider: string; status: string;
+          sender_address: string | null; sender_name: string | null;
+          config: Json; allow_external_recipients: boolean;
+          allow_trainer_statements: boolean; updated_by: string | null;
+        }>;
+        Update: Partial<{
+          provider: string; status: string; sender_address: string | null;
+          sender_name: string | null; config: Json;
+          allow_external_recipients: boolean;
+          allow_trainer_statements: boolean; updated_by: string | null;
+        }>;
+        Relationships: [];
+      };
+      scheduled_report_runs: {
+        Row: {
+          id: string; definition_id: string; organization_id: string;
+          intended_run_at: string; trigger_source: string; status: string;
+          job_id: string | null; report_package_id: string | null;
+          export_event_id: string | null; artifact: Json; is_final: boolean;
+          failure_code: string | null; failure_message: string | null;
+          started_at: string | null; completed_at: string | null;
+          created_by: string | null; created_at: string;
+        };
+        Insert: {
+          definition_id: string; organization_id: string;
+          intended_run_at: string;
+        } & Partial<{
+          id: string; trigger_source: string; status: string;
+          job_id: string | null; created_by: string | null;
+        }>;
+        Update: Partial<{
+          status: string; job_id: string | null;
+          report_package_id: string | null; export_event_id: string | null;
+          artifact: Json; is_final: boolean; failure_code: string | null;
+          failure_message: string | null; started_at: string | null;
+          completed_at: string | null;
+        }>;
+        Relationships: [];
+      };
+      email_delivery_events: {
+        Row: {
+          id: string; organization_id: string; channel_id: string | null;
+          scheduled_report_run_id: string | null; job_id: string | null;
+          recipient_email: string; recipient_type: string;
+          recipient_profile_id: string | null; template_key: string;
+          subject: string; artifact_type: string | null;
+          artifact_id: string | null; artifact_sha256: string | null;
+          status: string; provider: string;
+          provider_message_id: string | null; attempt_count: number;
+          last_error: string | null; idempotency_key: string;
+          sent_at: string | null; finalized_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          organization_id: string; recipient_email: string;
+          template_key: string; subject: string; idempotency_key: string;
+        } & Partial<{
+          id: string; channel_id: string | null;
+          scheduled_report_run_id: string | null; job_id: string | null;
+          recipient_type: string; recipient_profile_id: string | null;
+          artifact_type: string | null; artifact_id: string | null;
+          artifact_sha256: string | null; status: string; provider: string;
+        }>;
+        Update: Partial<{
+          status: string; provider: string;
+          provider_message_id: string | null; attempt_count: number;
+          last_error: string | null; sent_at: string | null;
+          finalized_at: string | null; job_id: string | null;
         }>;
         Relationships: [];
       };
@@ -2026,6 +2329,57 @@ export type Database = {
       };
       void_period_close: {
         Args: { p_run_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      store_connection_secret: {
+        Args: { p_connection_id: string; p_secret: string };
+        Returns: Json;
+      };
+      revoke_connection_secret: {
+        Args: { p_connection_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      enqueue_background_job: {
+        Args: {
+          p_organization_id: string; p_job_type: string; p_payload: Json;
+          p_idempotency_key: string; p_scheduled_for?: string;
+          p_max_attempts?: number; p_parent_job_id?: string | null;
+        };
+        Returns: string;
+      };
+      claim_background_jobs: {
+        Args: { p_worker_id: string; p_limit?: number; p_lease_seconds?: number };
+        Returns: Database["public"]["Tables"]["background_jobs"]["Row"][];
+      };
+      start_background_job: {
+        Args: { p_job_id: string; p_worker_id: string };
+        Returns: undefined;
+      };
+      complete_background_job: {
+        Args: { p_job_id: string; p_worker_id: string; p_result?: Json | null };
+        Returns: undefined;
+      };
+      fail_background_job: {
+        Args: {
+          p_job_id: string; p_worker_id: string; p_error_code: string;
+          p_error: string; p_retryable: boolean;
+        };
+        Returns: string;
+      };
+      retry_background_job: {
+        Args: { p_job_id: string };
+        Returns: undefined;
+      };
+      cancel_background_job: {
+        Args: { p_job_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      dead_letter_background_job: {
+        Args: { p_job_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      requeue_dead_letter_job: {
+        Args: { p_job_id: string; p_reason: string };
         Returns: undefined;
       };
     };
