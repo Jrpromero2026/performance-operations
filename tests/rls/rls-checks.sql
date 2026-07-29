@@ -54,8 +54,13 @@ $$;
 
 -- --- assertions ---------------------------------------------------------------
 do $$
-declare n int;
+declare
+  n int;
+  g3_id uuid;
 begin
+  -- Capture G3's id BEFORE impersonating: the smuggling test must attempt an
+  -- insert with a real foreign org id, not a subquery that RLS filters empty.
+  select id into strict g3_id from public.organizations where slug = 'g3-sports-fitness';
   -- 1) Outsider (no memberships) sees NO organizations: deny by default.
   perform pg_temp.impersonate('00000000-0000-4000-a000-000000000003');
   select count(*) into n from public.organizations;
@@ -99,8 +104,7 @@ begin
   perform pg_temp.impersonate('00000000-0000-4000-a000-000000000002');
   begin
     insert into public.departments (organization_id, name)
-    select id, 'RLS Smuggled Department' from public.organizations
-    where slug = 'g3-sports-fitness';
+    values (g3_id, 'RLS Smuggled Department');
     raise exception 'FAIL cross-org department insert was allowed';
   exception
     when insufficient_privilege then null; -- expected

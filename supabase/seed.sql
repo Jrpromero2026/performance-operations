@@ -174,6 +174,29 @@ join public.permissions p on p.key = g.permission_key
 on conflict do nothing;
 
 -- ----------------------------------------------------------------------------
+-- Service categories (Phase 2). Seeded per organization; a catalog heading,
+-- never referenced by name in calculation logic. Organizations may deactivate
+-- headings they do not use.
+-- ----------------------------------------------------------------------------
+insert into public.service_categories (organization_id, name, sort_order)
+select o.id, c.name, c.sort_order
+from public.organizations o
+cross join (values
+  ('Personal Training', 1),
+  ('PACK Training', 2),
+  ('Nutrition Coaching', 3),
+  ('Athlete Performance', 4),
+  ('Adult Human Performance', 5),
+  ('Tactical Performance', 6),
+  ('Team Performance', 7),
+  ('Performance Evaluation', 8),
+  ('Volleyball', 9),
+  ('Administrative', 10),
+  ('Other', 11)
+) as c(name, sort_order)
+on conflict (organization_id, name) do nothing;
+
+-- ----------------------------------------------------------------------------
 -- Platform-level audit event recording the seed.
 -- ----------------------------------------------------------------------------
 insert into public.audit_events (organization_id, actor_id, entity_type, action, metadata)

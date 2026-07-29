@@ -13,6 +13,15 @@ const envSchema = z.object({
   // Server-only. Never expose to the browser; never required at runtime.
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
   NEXT_PUBLIC_APP_URL: z.url().default("http://localhost:3000"),
+  /**
+   * Explicit development-only switch. The offline preview shell renders ONLY
+   * when Supabase is NOT configured AND this flag is set — it can never
+   * activate silently in an environment with production-style variables.
+   */
+  NEXT_PUBLIC_DEV_OFFLINE_PREVIEW: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -23,6 +32,9 @@ function readEnv(): Env {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: emptyToUndefined(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     SUPABASE_SERVICE_ROLE_KEY: emptyToUndefined(process.env.SUPABASE_SERVICE_ROLE_KEY),
     NEXT_PUBLIC_APP_URL: emptyToUndefined(process.env.NEXT_PUBLIC_APP_URL),
+    NEXT_PUBLIC_DEV_OFFLINE_PREVIEW: emptyToUndefined(
+      process.env.NEXT_PUBLIC_DEV_OFFLINE_PREVIEW
+    ),
   });
   if (!parsed.success) {
     const issues = parsed.error.issues
@@ -43,4 +55,13 @@ export const env = readEnv();
 /** True when the app has enough configuration to reach Supabase. */
 export function isSupabaseConfigured(): boolean {
   return Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}
+
+/**
+ * The offline preview shell is a development convenience only: it requires
+ * Supabase to be UNCONFIGURED and the explicit flag. With production-style
+ * env vars present it can never activate.
+ */
+export function isOfflinePreviewEnabled(): boolean {
+  return !isSupabaseConfigured() && env.NEXT_PUBLIC_DEV_OFFLINE_PREVIEW;
 }
