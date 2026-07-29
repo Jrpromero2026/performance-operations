@@ -24,6 +24,13 @@
 | C17 | 2026-07-29 | Offline preview requires explicit `NEXT_PUBLIC_DEV_OFFLINE_PREVIEW=true` AND absent Supabase vars; it can never activate alongside real environment variables. |
 | C18 | 2026-07-29 | Service aliases are source-specific (setmore/acuity/manual_csv), normalized lowercase, unique per source+organization. |
 
+| C19 | 2026-07-30 | Import architecture is staged (file → raw rows → normalize → match → review → approval → transactional posting); batch state machine is DB-trigger-enforced; posting/reversal are atomic security-definer RPCs. |
+| C20 | 2026-07-30 | Setmore Booking IDs identify recurring SERIES; occurrence identity = (org, source, booking id, start). One active ledger row per occurrence (partial unique index). |
+| C21 | 2026-07-30 | Original uploads are immutable evidence: private bucket, sha256, no update/delete storage policies; a posted file can never be posted again. |
+| C22 | 2026-07-30 | Source financial columns are named source_*_cents and are never labeled revenue; recognized/payroll-eligible revenue are future, separately named concepts. |
+| C23 | 2026-07-30 | Acuity support NOT claimed — no sample exists; Acuity files use the generic mapping adapter until a sample unblocks a dedicated versioned adapter. |
+| C24 | 2026-07-30 | Sign-out is device-local (scope 'local'): signing out of one browser does not revoke a user's other sessions. |
+
 ## Working Assumptions
 
 | # | Assumption | Revisit when |
@@ -52,6 +59,17 @@ Do not encode assumptions for any of these into calculation logic.
 | U1g | Team-training, PACK, and nutrition compensation structures. | Business owners. |
 | U1h | Evaluation bonuses and administrative-hour rates. | Business owners. |
 | U1i | Payroll adjustment approval rules. | Business owners. |
+| U2a | Should source notes/comments be imported into the ledger, excluded, or redacted? (Currently: staging evidence only.) | Business owners. |
+| U2b | Client identity matching rules — when may name+phone auto-link vs require review? May clients be marked anonymous/untracked? | Business owners. |
+| U2c | Which roles may create clients during import resolution? (Currently client:manage holders.) | Business owners. |
+| U2d | Data-retention duration for raw import rows and original files. | Business owners / compliance. |
+| U2e | Reversal approval rules — should reversal require a second approver? | Business owners. |
+| U2f | Separation of duties: must uploader ≠ approver ≠ poster? (Supported, not enforced.) | Business owners. |
+| U2g | Source-update behavior: auto-supersede posted appointments on re-import, or always require manual confirmation? (Currently manual.) | Business owners. |
+| U2h | Group-session participant handling — how do Setmore class rows represent multiple attendees, if ever? | Sample exports. |
+| U2i | Multi-coach appointments (head/assistant) — do they occur, and how are they exported? | Business owners. |
+| U2j | May excluded rows be reopened later? (Currently: excluded is final within a batch; re-import is the path back.) | Business owners. |
+| U2k | Operational file-size/row-count limits beyond the initial 10 MB / 10,000 rows. | Business owners. |
 | U2 | Which appointment statuses count as payable/billable, and cancellation/no-show pay rules. | Business owners. |
 | U3 | Reporting-period boundaries and lock cadence per organization. | Business owners. |
 | U4 | Revenue recognition: session-date vs payment-date, package/membership allocation. | Business owners / accountant. |

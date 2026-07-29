@@ -30,15 +30,20 @@
 - ⏳ Organization/location management UI (deferred; orgs seeded, platform-admin SQL/managed)
 - ⏳ Client registry (deferred to Import Center phase, where clients first matter)
 
-## Phase 3 — Import Center
+## Phase 3 — Import Center ✅ (complete except noted)
 
-- CSV upload (Setmore and Acuity formats), file storage, immutable raw rows
-- Format detection, Zod row validation, normalization pipeline
-- Trainer/client/service matching with alias learning
-- Resolution queue UI for unmatched/invalid rows
-- Import approval and transactional posting to `appointments`
-- Duplicate/overlap detection across batches
-- Full audit trail of import decisions
+- ✅ CSV upload with private evidence storage, sha256, immutable raw rows
+- ✅ Setmore adapter from real observed exports; generic mapping adapter with
+  versioned schema profiles; strict normalization (nothing coerced)
+- ✅ Trainer/client/service matching with alias learning + review candidates
+- ✅ Resolution queues (blocking/warnings/trainers/services/clients/statuses/
+  duplicates) with audited, bulk-capable resolutions
+- ✅ Approval (auto-revoked on change) + transactional posting to the
+  canonical appointments ledger + controlled reversal with preserved history
+- ✅ Duplicate/overlap detection across batches (series-aware occurrence keys)
+- ✅ Full audit trail of import decisions
+- ⏳ Acuity adapter BLOCKED pending a sample export (generic mapping is the
+  interim path); native .xlsx ingestion deferred (save-as-CSV documented)
 
 ## Phase 4 — Payroll Engine
 

@@ -39,12 +39,22 @@ hire/separation dates, notes, `source_identifiers` JSONB, default org) and
 `reporting_periods` (`period_type`, `payment_date`, `notes`, per-type overlap
 exclusion, locked-period trigger).
 
+## Phase 3 Entities (migrated and live)
+
+Clients: `clients`, `client_organization_assignments`,
+`client_source_identifiers`. Import staging: `import_batches` (file
+metadata folded in; 1 file : 1 batch), `import_schema_profiles`,
+`import_rows` (immutable originals; matching folded in),
+`import_row_issues`, `import_resolutions` (append-only),
+`import_batch_events` (append-only), `trainer_source_aliases`,
+`appointment_status_definitions`, `source_status_mappings`. Ledger:
+`appointments` (trigger-frozen source evidence), `appointment_participants`,
+`appointment_status_history`, `appointment_source_links`,
+`appointment_corrections` (all append-only). See
+IMPORT_ARCHITECTURE.md and APPOINTMENT_LEDGER.md.
+
 ## Future Planned Entities (not yet migrated)
 
-- `clients`
-- `import_batches`, `import_rows_raw`, `appointment_candidates`,
-  `match_resolutions`
-- `appointments` (posted, immutable)
 - `payroll_runs`, `payroll_line_items`, `payroll_adjustments`,
   `payroll_state_transitions`
 - `kpi_snapshots`, `trainer_scorecards`

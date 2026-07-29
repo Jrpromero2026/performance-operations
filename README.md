@@ -87,8 +87,24 @@ Start with [docs/PROJECT_CHARTER.md](docs/PROJECT_CHARTER.md), then
 [docs/INPUTS_REQUIRED.md](docs/INPUTS_REQUIRED.md),
 [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md),
 [docs/CONFIGURATION_MODEL.md](docs/CONFIGURATION_MODEL.md),
-[docs/COMPENSATION_MODEL.md](docs/COMPENSATION_MODEL.md), and
-[docs/PHASE_2_REPORT.md](docs/PHASE_2_REPORT.md).
+[docs/COMPENSATION_MODEL.md](docs/COMPENSATION_MODEL.md),
+[docs/PHASE_2_REPORT.md](docs/PHASE_2_REPORT.md),
+[docs/IMPORT_ARCHITECTURE.md](docs/IMPORT_ARCHITECTURE.md),
+[docs/SOURCE_ADAPTERS.md](docs/SOURCE_ADAPTERS.md),
+[docs/APPOINTMENT_LEDGER.md](docs/APPOINTMENT_LEDGER.md),
+[docs/IMPORT_SECURITY.md](docs/IMPORT_SECURITY.md), and
+[docs/PHASE_3_REPORT.md](docs/PHASE_3_REPORT.md). Observed source-export
+schemas live in [docs/schemas/](docs/schemas/); real business exports stay
+in gitignored `business-inputs/` and are never committed.
+
+## Imports (Phase 3)
+
+Upload Setmore report CSVs (save the .xlsx report as CSV first) or any
+CSV via column mapping at `/imports/new`. Files stage through review and
+approval before transactional posting to the canonical `/appointments`
+ledger; posted history is immutable, corrections and reversals are
+audited, and originals are preserved as evidence. Acuity has no dedicated
+adapter yet (no sample export) — use the mapping workflow meanwhile.
 
 ## Security & financial integrity
 

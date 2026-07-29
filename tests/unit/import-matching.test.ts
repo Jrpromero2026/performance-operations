@@ -10,7 +10,6 @@ import {
   type ServiceLookup,
   type TrainerLookup,
 } from "@/lib/imports/matching";
-import type { NormalizedRow } from "@/lib/imports/types";
 
 const trainer = (over: Partial<TrainerLookup>): TrainerLookup => ({
   id: "t1",
