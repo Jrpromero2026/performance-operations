@@ -61,6 +61,24 @@ export function canAccessAllWorkspaces(memberships: readonly MembershipGrant[]):
   return memberships.some((m) => roleHasPermission(m.roleKey, "org:read_all"));
 }
 
+/**
+ * Which roles may a user grant in an organization? Deny by default:
+ * platform admins grant anything; member:manage holders grant anything
+ * except platform_admin; everyone else grants nothing. (Mirrored by the
+ * restrictive app.can_grant_role RLS policy.)
+ */
+export function computeGrantableRoles<T extends { key: string }>(
+  memberships: readonly MembershipGrant[],
+  organizationId: string,
+  allRoles: readonly T[]
+): T[] {
+  if (isPlatformAdmin(memberships)) return [...allRoles];
+  if (!hasPermissionInOrganization(memberships, organizationId, "member:manage")) {
+    return [];
+  }
+  return allRoles.filter((r) => r.key !== "platform_admin");
+}
+
 /** May the user see this department? (Department-scoped roles are narrowed.) */
 export function canAccessDepartment(
   memberships: readonly MembershipGrant[],

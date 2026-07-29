@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 /**
- * Route protection + session refresh.
+ * Route protection + session refresh (Next 16 "proxy" convention — the
+ * successor to middleware.ts).
  *
  * When Supabase is configured, every non-public route requires a signed-in
  * user; unauthenticated requests are redirected to /login with the intended
@@ -23,7 +24,7 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.has(pathname) || pathname.startsWith("/auth/");
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return NextResponse.next();

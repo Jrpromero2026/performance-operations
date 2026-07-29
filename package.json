@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "node scripts/run-e2e.mjs all",
+    "test:e2e:offline": "node scripts/run-e2e.mjs offline",
+    "test:e2e:live": "node scripts/run-e2e.mjs live"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",

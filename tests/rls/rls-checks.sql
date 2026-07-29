@@ -126,4 +126,103 @@ begin
   raise notice 'RLS checks passed';
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- Phase 2 checks: invitations, services, compensation, escalation guards,
+-- published-version immutability, locked-period protection.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  n int;
+  g3_id uuid;
+  th_id uuid;
+  admin_role uuid;
+  viewer_role uuid;
+  v_plan uuid;
+  v_version uuid;
+begin
+  select id into strict g3_id from public.organizations where slug = 'g3-sports-fitness';
+  select id into strict th_id from public.organizations where slug = 'timberhill-athletic-club';
+  select id into strict admin_role from public.roles where key = 'platform_admin';
+  select id into strict viewer_role from public.roles where key = 'viewer';
+
+  -- Fixture: a compensation plan + published version in Timberhill (as postgres).
+  insert into public.compensation_plans (organization_id, name)
+  values (th_id, 'RLS Check Plan') returning id into v_plan;
+  insert into public.compensation_plan_versions
+    (plan_id, organization_id, version_number, compensation_method, status)
+  values (v_plan, th_id, 1, 'flat_per_session', 'published')
+  returning id into v_version;
+
+  -- 6) Outsider sees no invitations, services, or compensation plans.
+  perform pg_temp.impersonate('00000000-0000-4000-a000-000000000003');
+  select count(*) into n from public.invitations;
+  if n <> 0 then raise exception 'FAIL outsider sees % invitations', n; end if;
+  select count(*) into n from public.service_categories;
+  if n <> 0 then raise exception 'FAIL outsider sees % service categories', n; end if;
+  select count(*) into n from public.compensation_plans;
+  if n <> 0 then raise exception 'FAIL outsider sees % compensation plans', n; end if;
+  reset role;
+
+  -- 7) Workspace admin sees only own-org service categories (11 seeded).
+  perform pg_temp.impersonate('00000000-0000-4000-a000-000000000002');
+  select count(*) into n from public.service_categories;
+  if n <> 11 then raise exception 'FAIL workspace admin sees % categories (want 11)', n; end if;
+
+  -- 8) Escalation guard: workspace admin cannot create a platform_admin
+  --    invitation, but CAN create a viewer invitation.
+  begin
+    insert into public.invitations (organization_id, email, role_id, token_hash, invited_by, expires_at)
+    values (th_id, 'rls-escalation@test.local', admin_role, 'rls-hash-1',
+            '00000000-0000-4000-a000-000000000002', now() + interval '1 day');
+    raise exception 'FAIL workspace admin minted a platform_admin invitation';
+  exception
+    when insufficient_privilege then null;
+    when check_violation then null;
+  end;
+  insert into public.invitations (organization_id, email, role_id, token_hash, invited_by, expires_at)
+  values (th_id, 'rls-viewer@test.local', viewer_role, 'rls-hash-2',
+          '00000000-0000-4000-a000-000000000002', now() + interval '1 day');
+
+  -- 9) Escalation guard on memberships: workspace admin cannot insert a
+  --    platform_admin membership (restrictive policy).
+  begin
+    insert into public.organization_memberships (profile_id, organization_id, role_id)
+    values ('00000000-0000-4000-a000-000000000003', th_id, admin_role);
+    raise exception 'FAIL workspace admin granted platform_admin membership';
+  exception
+    when insufficient_privilege then null;
+    when check_violation then null;
+  end;
+  reset role;
+
+  -- 10) Published compensation versions are immutable even for platform admins.
+  perform pg_temp.impersonate('00000000-0000-4000-a000-000000000001');
+  begin
+    update public.compensation_plan_versions
+    set compensation_method = 'hourly' where id = v_version;
+    raise exception 'FAIL published version substance was mutated';
+  exception
+    when insufficient_privilege then null; -- trigger raises 42501
+  end;
+
+  -- 11) Locked reporting periods reject edits without payroll:reopen.
+  reset role;
+  insert into public.reporting_periods (organization_id, label, start_date, end_date, status)
+  values (th_id, 'RLS Locked Period', '2099-01-01', '2099-01-31', 'locked');
+  perform pg_temp.impersonate('00000000-0000-4000-a000-000000000002');
+  -- workspace admin has period:manage but NOT payroll:reopen
+  begin
+    update public.reporting_periods set label = 'tampered'
+    where label = 'RLS Locked Period';
+    -- if no exception, ensure zero rows changed (RLS may filter silently)
+    get diagnostics n = row_count;
+    if n <> 0 then raise exception 'FAIL locked period was edited without reopen permission'; end if;
+  exception
+    when insufficient_privilege then null; -- trigger raises 42501
+  end;
+  reset role;
+
+  raise notice 'Phase 2 RLS checks passed';
+end $$;
+
 rollback;

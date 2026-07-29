@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database, Json } from "@/lib/supabase/types";
 import {
+  computeGrantableRoles,
   hasPermissionInOrganization,
   isPlatformAdmin,
   type MembershipGrant,
@@ -70,20 +71,13 @@ export function actorIsPlatformAdmin(actor: ActorContext): boolean {
   return isPlatformAdmin(actor.memberships);
 }
 
-/**
- * Which roles may this actor grant in this organization?
- * Platform admins grant anything; member:manage holders grant anything
- * except platform_admin; everyone else grants nothing. (Mirrored by the
- * restrictive RLS policy app.can_grant_role.)
- */
+/** Which roles may this actor grant in this organization? (Pure logic in authz.) */
 export function grantableRoles(
   actor: ActorContext,
   organizationId: string,
   allRoles: readonly { id: string; key: string }[]
 ): { id: string; key: string }[] {
-  if (actorIsPlatformAdmin(actor)) return [...allRoles];
-  if (!actorCan(actor, organizationId, "member:manage")) return [];
-  return allRoles.filter((r) => r.key !== "platform_admin");
+  return computeGrantableRoles(actor.memberships, organizationId, allRoles);
 }
 
 const DENIED = "You do not have permission to perform this action.";

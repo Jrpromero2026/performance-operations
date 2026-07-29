@@ -80,7 +80,7 @@ test("a tampered workspace cookie falls back to an accessible workspace", async 
     {
       name: "po-workspace",
       value: "99999999-9999-9999-9999-999999999999",
-      url: "http://localhost:3000",
+      url: "http://localhost:3100",
     },
   ]);
   await page.goto("/overview");

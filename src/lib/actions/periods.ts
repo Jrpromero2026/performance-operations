@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import {
+  canTransitionPeriod,
+  transitionRequiresReopen,
+} from "@/lib/schemas/period-rules";
+import {
   getActorContext,
   actorCan,
   writeAudit,
@@ -181,13 +185,6 @@ export async function updatePeriod(
   return { message: "Period updated." };
 }
 
-const TRANSITIONS: Record<string, string[]> = {
-  open: ["closed"],
-  closed: ["open", "locked"],
-  locked: ["closed"], // reopen — requires payroll:reopen
-  draft: ["open"],
-};
-
 export async function changePeriodStatus(
   _prev: ActionState,
   formData: FormData
@@ -215,11 +212,11 @@ export async function changePeriodStatus(
   if (!actorCan(actor, period.organization_id, "period:manage")) {
     return PERMISSION_DENIED;
   }
-  if (!(TRANSITIONS[period.status] ?? []).includes(parsed.data.newStatus)) {
+  if (!canTransitionPeriod(period.status, parsed.data.newStatus)) {
     return { error: `A ${period.status} period cannot move to ${parsed.data.newStatus}.` };
   }
   if (
-    period.status === "locked" &&
+    transitionRequiresReopen(period.status) &&
     !actorCan(actor, period.organization_id, "payroll:reopen")
   ) {
     return { error: "Reopening a locked period requires platform-admin authorization." };
