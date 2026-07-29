@@ -92,10 +92,34 @@ Start with [docs/PROJECT_CHARTER.md](docs/PROJECT_CHARTER.md), then
 [docs/IMPORT_ARCHITECTURE.md](docs/IMPORT_ARCHITECTURE.md),
 [docs/SOURCE_ADAPTERS.md](docs/SOURCE_ADAPTERS.md),
 [docs/APPOINTMENT_LEDGER.md](docs/APPOINTMENT_LEDGER.md),
-[docs/IMPORT_SECURITY.md](docs/IMPORT_SECURITY.md), and
-[docs/PHASE_3_REPORT.md](docs/PHASE_3_REPORT.md). Observed source-export
+[docs/IMPORT_SECURITY.md](docs/IMPORT_SECURITY.md),
+[docs/PHASE_3_REPORT.md](docs/PHASE_3_REPORT.md), the Phase 4 payroll
+docs (PAYROLL_*.md + [docs/PHASE_4_REPORT.md](docs/PHASE_4_REPORT.md)),
+the Phase 5 intelligence docs
+([docs/PERFORMANCE_INTELLIGENCE_ENGINE.md](docs/PERFORMANCE_INTELLIGENCE_ENGINE.md),
+[docs/METRIC_CATALOG.md](docs/METRIC_CATALOG.md),
+[docs/METRIC_DEFINITIONS.md](docs/METRIC_DEFINITIONS.md),
+[docs/REPORTING_ARCHITECTURE.md](docs/REPORTING_ARCHITECTURE.md),
+[docs/PHASE_5_REPORT.md](docs/PHASE_5_REPORT.md)), and the Phase 6
+operations docs
+([docs/EXECUTIVE_OPERATIONS_CENTER.md](docs/EXECUTIVE_OPERATIONS_CENTER.md),
+[docs/DASHBOARD_ARCHITECTURE.md](docs/DASHBOARD_ARCHITECTURE.md),
+[docs/WIDGET_SYSTEM.md](docs/WIDGET_SYSTEM.md),
+[docs/NOTIFICATION_MODEL.md](docs/NOTIFICATION_MODEL.md),
+[docs/SEARCH_ARCHITECTURE.md](docs/SEARCH_ARCHITECTURE.md),
+[docs/COMMAND_PALETTE.md](docs/COMMAND_PALETTE.md),
+[docs/PHASE_6_REPORT.md](docs/PHASE_6_REPORT.md)). Observed source-export
 schemas live in [docs/schemas/](docs/schemas/); real business exports stay
 in gitignored `business-inputs/` and are never committed.
+
+## Operations Center (Phase 6)
+
+`/overview` is the role-aware executive operations center; `Ctrl+K` opens
+the permission-aware command palette and global search; the header bell
+carries in-app notifications; `/reports` is the Report Center (quick
+report, saved views, export history). Every number on every dashboard
+comes from the Performance Intelligence Engine (Phase 5) — the UI
+computes nothing.
 
 ## Imports (Phase 3)
 

@@ -164,7 +164,6 @@ export default async function OverviewPage() {
       (m) => m.organizationId === organizationId && m.roleKey === "department_manager",
     )
     .flatMap((m) => m.departmentIds ?? []);
-  const isOrgReader = can("appointment:read") && deptScopedIds.length === 0;
   const isDeptManager = can("appointment:read") && deptScopedIds.length > 0 && !context.canAccessAll;
   const isTrainerSelf = !can("appointment:read") && can("trainer:read_self");
 

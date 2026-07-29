@@ -105,7 +105,27 @@ the UI reflects the corrected selection.
 
 See `AUTHORIZATION_MODEL.md` for the full model.
 
-## Future Import Architecture
+## Implemented Domain Layers (Phases 3–6)
+
+The "future" sections below became reality with dedicated documents:
+
+- **Imports (Phase 3)** — IMPORT_ARCHITECTURE.md, SOURCE_ADAPTERS.md,
+  APPOINTMENT_LEDGER.md, IMPORT_SECURITY.md.
+- **Payroll (Phase 4)** — PAYROLL_ARCHITECTURE.md,
+  PAYROLL_CALCULATION_ENGINE.md, PAYROLL_STATE_MACHINE.md,
+  PAYROLL_SECURITY.md, PAYROLL_DEPENDENCY_GUARDS.md,
+  PAYROLL_STATEMENTS_AND_EXPORTS.md.
+- **Intelligence (Phase 5)** — PERFORMANCE_INTELLIGENCE_ENGINE.md,
+  METRIC_CATALOG.md, METRIC_DEFINITIONS.md, REPORTING_ARCHITECTURE.md.
+  The engine (`src/lib/intelligence/`) is the ONLY source of metrics.
+- **Executive Operations Center (Phase 6)** —
+  EXECUTIVE_OPERATIONS_CENTER.md, DASHBOARD_ARCHITECTURE.md,
+  WIDGET_SYSTEM.md, NOTIFICATION_MODEL.md, SEARCH_ARCHITECTURE.md,
+  COMMAND_PALETTE.md. Dashboards, alerts, notifications, palette/search,
+  and the Report Center all CONSUME the engine — no UI-side business
+  math, no dashboard-specific SQL.
+
+## Original Import Architecture Sketch (superseded by Phase 3 docs)
 
 - An **import batch** records the file, source system (Setmore/Acuity),
   organization, reporting period, uploader, and state

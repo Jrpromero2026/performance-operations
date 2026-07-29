@@ -45,31 +45,34 @@
 - ⏳ Acuity adapter BLOCKED pending a sample export (generic mapping is the
   interim path); native .xlsx ingestion deferred (save-as-CSV documented)
 
-## Phase 4 — Payroll Engine
+## Phase 4 — Payroll Engine ✅ (complete; official org rules evidence-blocked)
 
-- Compensation plans + immutable versions (session rates, commission tiers,
-  hourly, salary components) in integer cents/basis points
-- Effective-dated trainer compensation assignments
-- Payroll runs per organization + reporting period
-- Calculation engine with per-line traces; state machine
-  Draft → In Review → Approved → Posted → Locked (+ audited Reopen)
-- Adjustments with reasons and approvals
-- Input snapshotting for historical integrity
+- ✅ Deterministic calc-v1 engine (typed evaluators, traces, fail-closed)
+- ✅ DB-enforced run state machine, posting snapshots + sha256, reopen/
+  supersede/void, dependency guards on appointments + import reversal
+- ✅ Manual time + adjustments with separation of duties
+- ✅ Statements, department summaries, CSV exports (masked client refs)
+- ⏳ Official Timberhill/G3 plan seeding BLOCKED on owner confirmations
+  (docs/business-rules/payroll-rule-gaps.md)
 
-## Phase 5 — Analytics
+## Phase 5 — Performance Intelligence Engine ✅ (complete)
 
-- KPI computation from posted data: revenue, payroll, sessions, active
-  clients, revenue per session, payroll percentage
-- Department dashboards and period-over-period comparisons
-- Trainer scorecards (sessions, retention, utilization, revenue)
-- Workspace-level rollups for All Workspaces users
+- ✅ 60-metric catalog (intel-v1), one formula each, health states
+- ✅ Reporting service (metrics/breakdowns/trends/summaries), permission
+  narrowing (org/department/self), RLS-backed datasets
+- ✅ Trend engine + deterministic executive summaries; /reports surface
+- ⏳ Eligible/recognized revenue + capacity utilization awaiting business
+  definitions/config
 
-## Phase 6 — Reports
+## Phase 6 — Executive Operations Center ✅ (complete)
 
-- Payroll register and payroll statement exports (CSV/PDF)
-- Department KPI reports and trainer scorecard exports
-- Period close-out package
-- Saved report definitions and history
+- ✅ Premium shell: command palette + global search (Ctrl+K), notification
+  center (in-app), collapsible sidebar, role-aware executive overview
+- ✅ Widget framework (engine-consuming, health-aware, no UI math)
+- ✅ Operational alerts from engine readiness + pipeline states
+- ✅ Report Center (quick report, saved views, export history + CSV),
+  department/trainer overviews
+- ⏳ Saved-view sharing + scheduled reports: declared placeholders
 
 ## Phase 7 — Integrations
 
