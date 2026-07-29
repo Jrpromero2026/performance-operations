@@ -31,6 +31,16 @@
 | C23 | 2026-07-30 | Acuity support NOT claimed — no sample exists; Acuity files use the generic mapping adapter until a sample unblocks a dedicated versioned adapter. |
 | C24 | 2026-07-30 | Sign-out is device-local (scope 'local'): signing out of one browser does not revoke a user's other sessions. |
 
+| C25 | 2026-07-29 | Payroll is PREPARATION only: gross compensation. Net pay, taxes, and withholdings are permanently out of scope; every statement/export says so. |
+| C26 | 2026-07-29 | The calculation engine fails closed: unresolved configuration (basis type, status criteria, rounding scope, tier gaps, missing plans/rates, unknown roles) produces blocked 0¢ lines + blocking issues, never a payment. No Timberhill/G3 official plans are seeded until owner confirmations arrive (business-rules docs). |
+| C27 | 2026-07-29 | Engine determinism is versioned (`calc-v1`, stamped on runs and lines); rounding is integer-rational with declared method + scope; per_trainer scope reconciles on the last percentage line with a trace step. |
+| C28 | 2026-07-29 | Reopen mutates the SAME run (clearing approval + posting marks — migration 16) while every posted snapshot is preserved per version; supersession creates a linked replacement run and flags distributed exports. Posted work is never voided or deleted. |
+| C29 | 2026-07-29 | Appointment/import dependency guard: material appointment changes and batch reversals are DB-blocked while approved/posted/locked payroll references them (`payroll_dependency_exists:` lists run ids); the UI surfaces dependencies before the attempt. |
+| C30 | 2026-07-29 | Late-arriving appointments: the run freezes an appointment cutoff at first calculation; later imports surface as a warning and are only included by an explicit, audited cutoff refresh. |
+| C31 | 2026-07-29 | Separation of duties: no self-approval of time entries or adjustments; approved adjustment amounts are DB-immutable (corrections are new adjustments); reopening posted payroll is platform-admin only. |
+| C32 | 2026-07-29 | Trainer self-scope on payroll rows requires the run to be posted/locked, enforced via security-definer status helper (migration 17) — draft figures are never trainer-visible. |
+| C33 | 2026-07-29 | Statements/exports use masked client references (date + service only); CSV via route handlers with export records; PDF = browser print; XLSX deferred as not practical this phase. |
+
 ## Working Assumptions
 
 | # | Assumption | Revisit when |
