@@ -194,8 +194,12 @@ describe("appointment and payroll checks", () => {
     inputs.appointments.activeInPeriod = 0;
     inputs.payroll.finalizedRun = null;
     expect(checkByCode(inputs, "zero_activity_period").status).toBe("fail");
-    // Payroll is only required when the period has activity.
+    // Payroll is only required when the period has activity — and so is
+    // its register export (no posted payroll = no register to generate).
     expect(checkByCode(inputs, "payroll_finalized").status).toBe("pass");
+    inputs.reporting.exportTypesPresent = ["executive_summary_csv"];
+    expect(checkByCode(inputs, "export_payroll_register_csv").status).toBe("pass");
+    expect(checkByCode(inputs, "export_executive_summary_csv").status).toBe("pass");
   });
 
   it("blocks when activity exists but no payroll run is finalized", () => {

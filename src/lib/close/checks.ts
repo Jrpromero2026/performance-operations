@@ -579,6 +579,11 @@ export function classifyCloseChecks(inputs: CloseReadinessInputs): CloseCheck[] 
     reporting.executivePackage?.id ?? null,
   );
   for (const requiredType of REQUIRED_EXPORT_TYPES) {
+    // The payroll register derives from a posted payroll run, which a
+    // zero-activity period does not have (mirrors the close RPC's
+    // conditional payroll requirement) — required only with activity.
+    const applicable =
+      requiredType !== "payroll_register_csv" || payrollRequired;
     push(
       {
         code: `export_${requiredType}`,
@@ -590,10 +595,12 @@ export function classifyCloseChecks(inputs: CloseReadinessInputs): CloseCheck[] 
         link: `/period-close/${inputs.closeRunId}/exports`,
         waivable: false,
       },
-      !reporting.exportTypesPresent.includes(requiredType),
-      reporting.exportTypesPresent.includes(requiredType)
-        ? "Export present."
-        : "Export not generated yet.",
+      applicable && !reporting.exportTypesPresent.includes(requiredType),
+      !applicable
+        ? "Not required — the period has no active appointments (no payroll register exists without posted payroll)."
+        : reporting.exportTypesPresent.includes(requiredType)
+          ? "Export present."
+          : "Export not generated yet.",
     );
   }
   push(
