@@ -1718,6 +1718,59 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      /* ------------------------------------------------------------------
+       * Phase 6 tables (hand-maintained to match migration 18; compact form).
+       * ---------------------------------------------------------------- */
+      notifications: {
+        Row: {
+          id: string; recipient_id: string; organization_id: string | null;
+          category: string; severity: string; title: string; body: string;
+          link_path: string | null; entity_type: string | null;
+          entity_id: string | null; actor_id: string | null;
+          created_at: string; read_at: string | null; pinned_at: string | null;
+          archived_at: string | null;
+        };
+        Insert: {
+          recipient_id: string; category: string; title: string; actor_id: string;
+        } & Partial<{
+          id: string; organization_id: string | null; severity: string;
+          body: string; link_path: string | null; entity_type: string | null;
+          entity_id: string | null;
+        }>;
+        Update: Partial<{
+          read_at: string | null; pinned_at: string | null;
+          archived_at: string | null;
+        }>;
+        Relationships: [];
+      };
+      saved_views: {
+        Row: {
+          id: string; owner_id: string; kind: string; page: string;
+          name: string; config: Json; pinned: boolean;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          owner_id: string; kind: string; page: string; name: string;
+        } & Partial<{ id: string; config: Json; pinned: boolean }>;
+        Update: Partial<{ name: string; config: Json; pinned: boolean }>;
+        Relationships: [];
+      };
+      export_events: {
+        Row: {
+          id: string; organization_id: string; export_type: string;
+          source_page: string; format: string; engine_version: string | null;
+          metadata: Json; generated_by: string | null; created_at: string;
+        };
+        Insert: {
+          organization_id: string; export_type: string; source_page: string;
+          generated_by: string;
+        } & Partial<{
+          id: string; format: string; engine_version: string | null;
+          metadata: Json;
+        }>;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
