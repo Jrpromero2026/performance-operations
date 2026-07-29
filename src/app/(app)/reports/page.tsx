@@ -10,20 +10,27 @@ import { getWorkspaceContext } from "@/lib/workspace/server";
 import { getPeriodContext } from "@/lib/period/server";
 import { IntelligenceSession } from "@/lib/intelligence/service";
 import { QuickReport } from "./quick-report";
-import { SaveCurrentReportForm, SavedViewRowActions } from "./saved-view-forms";
+import {
+  SaveCurrentReportForm,
+  SavedViewRowActions,
+  SavedViewSharingControls,
+} from "./saved-view-forms";
+import { NewScheduledReportForm, ScheduledReportRowActions } from "./scheduled-forms";
 
 export const metadata: Metadata = { title: "Reports" };
 
 /**
- * Report Center: quick report (engine-driven), saved views, and export
- * history. Everything calls the IntelligenceSession — no business logic.
- * Scheduled reports remain an intentional placeholder (no scheduler
- * infrastructure exists).
+ * Report Center: quick report (engine-driven), saved views (personal +
+ * organization-shared, with defaults that auto-apply the period), scheduled
+ * report DEFINITIONS (execution intentionally not enabled — no scheduler
+ * infrastructure exists), and export history. Everything calls the
+ * IntelligenceSession — no business logic.
  */
 
 const TABS = [
   ["quick", "Quick report"],
   ["saved", "Saved views"],
+  ["scheduled", "Scheduled"],
   ["exports", "Export history"],
 ] as const;
 
@@ -80,7 +87,37 @@ export default async function ReportsPage({
   if (!canOrgRead && !canSelfRead) return <PermissionDenied title="Reports" />;
 
   const period = await getPeriodContext(context);
-  if (!period.selected) {
+  let selectedPeriod = period.selected;
+  let appliedDefaultView: string | null = null;
+  if (!selectedPeriod && canOrgRead) {
+    // Default-view auto-apply: when no period is chosen, fall back to the
+    // actor's personal default view (then the organization default) for
+    // this page, IF its stored period still exists in this organization.
+    // Anything stale falls through safely to the period prompt.
+    const { data: defaults } = await actor.supabase
+      .from("saved_views")
+      .select("id, name, owner_id, shared_scope, config")
+      .eq("page", "reports")
+      .eq("is_default", true)
+      .or(
+        `owner_id.eq.${actor.userId},and(shared_scope.eq.organization,organization_id.eq.${organizationId})`,
+      );
+    const ranked = (defaults ?? []).sort((a, b) => {
+      const aPersonal = a.owner_id === actor.userId && a.shared_scope === "personal" ? 0 : 1;
+      const bPersonal = b.owner_id === actor.userId && b.shared_scope === "personal" ? 0 : 1;
+      return aPersonal - bPersonal;
+    });
+    for (const view of ranked) {
+      const config = view.config as { reportingPeriodId?: string };
+      const match = period.options.find((p) => p.id === config.reportingPeriodId);
+      if (match) {
+        selectedPeriod = match;
+        appliedDefaultView = view.name;
+        break;
+      }
+    }
+  }
+  if (!selectedPeriod) {
     return (
       <div className="space-y-6">
         <PageHeader
@@ -89,7 +126,7 @@ export default async function ReportsPage({
         />
         <EmptyState
           title="Select a reporting period"
-          description="Choose a reporting period in the header — every report is computed for that window."
+          description="Choose a reporting period in the header — every report is computed for that window. Tip: mark a saved view as default and it will apply automatically."
         />
       </div>
     );
@@ -98,10 +135,10 @@ export default async function ReportsPage({
   const session = await IntelligenceSession.create(
     actor,
     organizationId,
-    period.selected.startDate,
-    period.selected.endDate,
+    selectedPeriod.startDate,
+    selectedPeriod.endDate,
   );
-  const headerDescription = `${context.selected?.name ?? ""} · ${period.selected.label} (${period.selected.startDate} – ${period.selected.endDate}) · engine intel-v1`;
+  const headerDescription = `${context.selected?.name ?? ""} · ${selectedPeriod.label} (${selectedPeriod.startDate} – ${selectedPeriod.endDate}) · engine intel-v1${appliedDefaultView ? ` · default view “${appliedDefaultView}” applied` : ""}`;
 
   /* ------------------------------ trainer self-service view ----------- */
   if (!canOrgRead) {
@@ -135,15 +172,51 @@ export default async function ReportsPage({
     "payroll:export",
   );
 
+  const canShare = hasPermissionInOrganization(
+    context.memberships,
+    organizationId,
+    "saved_report:share",
+  );
+  const canManageScheduled = hasPermissionInOrganization(
+    context.memberships,
+    organizationId,
+    "scheduled_report:manage",
+  );
+
   const { data: savedViews } =
     tab === "saved"
       ? await actor.supabase
           .from("saved_views")
           .select("*")
-          .eq("owner_id", actor.userId)
           .eq("page", "reports")
+          .or(
+            `owner_id.eq.${actor.userId},and(shared_scope.eq.organization,organization_id.eq.${organizationId})`,
+          )
           .order("pinned", { ascending: false })
           .order("updated_at", { ascending: false })
+      : { data: null };
+
+  const ownerIds = [...new Set((savedViews ?? []).map((v) => v.owner_id))].filter(
+    (id) => id !== actor.userId,
+  );
+  const { data: ownerProfiles } =
+    ownerIds.length > 0
+      ? await actor.supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", ownerIds)
+      : { data: null };
+  const ownerName = new Map(
+    (ownerProfiles ?? []).map((p) => [p.id, p.full_name || p.email]),
+  );
+
+  const { data: scheduledDefinitions } =
+    tab === "scheduled"
+      ? await actor.supabase
+          .from("scheduled_report_definitions")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .order("created_at", { ascending: false })
       : { data: null };
 
   const { data: exportEvents } =
@@ -196,7 +269,7 @@ export default async function ReportsPage({
           </Link>
         ))}
         <span className="ml-2 self-center text-xs text-ink-muted">
-          Scheduled reports: planned (no scheduler yet)
+          Scheduled reports: definitions only — execution not yet enabled
         </span>
       </div>
 
@@ -213,26 +286,41 @@ export default async function ReportsPage({
           <SaveCurrentReportForm
             page="reports"
             config={{
-              reportingPeriodId: period.selected.id,
-              periodLabel: period.selected.label,
+              reportingPeriodId: selectedPeriod.id,
+              periodLabel: selectedPeriod.label,
               organizationId,
             }}
           />
           {(savedViews ?? []).length === 0 ? (
             <EmptyState
               title="No saved views yet"
-              description="Save the current report with a name to find it here; pin your favorites."
+              description="Save the current report with a name to find it here; pin your favorites, share with the organization, or mark one as your default."
             />
           ) : (
             <ul className="divide-y divide-border rounded-[--radius-card] border border-border bg-surface shadow-sm">
               {(savedViews ?? []).map((view) => {
                 const config = view.config as { periodLabel?: string };
+                const isOwner = view.owner_id === actor.userId;
                 return (
-                  <li key={view.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <li
+                    key={view.id}
+                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                    data-testid={`saved-view-${view.id}`}
+                  >
                     <div className="min-w-0">
                       <p className="flex items-center gap-2 text-sm font-medium text-ink">
                         {view.pinned && (
                           <span className="text-[10px] font-bold uppercase text-accent">pinned</span>
+                        )}
+                        {view.is_default && (
+                          <span className="rounded bg-accent-soft px-1.5 text-[10px] font-bold uppercase text-accent">
+                            default
+                          </span>
+                        )}
+                        {view.shared_scope !== "personal" && (
+                          <span className="rounded bg-surface-sunken px-1.5 text-[10px] font-bold uppercase text-ink-secondary">
+                            {view.shared_scope}
+                          </span>
                         )}
                         <Link href="/reports" className="truncate hover:text-accent">
                           {view.name}
@@ -240,9 +328,91 @@ export default async function ReportsPage({
                       </p>
                       <p className="text-xs text-ink-muted">
                         {config.periodLabel ?? "—"} · saved {view.updated_at.slice(0, 10)}
+                        {!isOwner && (
+                          <span> · shared by {ownerName.get(view.owner_id) ?? "another member"}</span>
+                        )}
                       </p>
                     </div>
-                    <SavedViewRowActions id={view.id} pinned={view.pinned} />
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <SavedViewSharingControls
+                        id={view.id}
+                        organizationId={organizationId}
+                        sharedScope={view.shared_scope}
+                        isDefault={view.is_default}
+                        isOwner={isOwner}
+                        canShare={canShare}
+                      />
+                      {isOwner && <SavedViewRowActions id={view.id} pinned={view.pinned} />}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <p className="text-xs text-ink-muted">
+            A default view auto-applies its reporting period when you open
+            Reports without a period selected. Organization-shared views are
+            visible to members whose role can see this page.
+          </p>
+        </div>
+      )}
+
+      {tab === "scheduled" && (
+        <div className="space-y-4" data-testid="report-scheduled">
+          <div className="rounded-[--radius-card] border border-warning/40 bg-warning-soft px-4 py-3 text-sm text-ink">
+            <p className="font-semibold">Execution not yet enabled</p>
+            <p className="mt-0.5 text-xs text-ink-secondary">
+              These are stored definitions only. No emails are sent and no
+              reports run automatically — there is no scheduler, email, or
+              webhook infrastructure in this system yet. Definitions record
+              intent for when execution is built.
+            </p>
+          </div>
+          {canManageScheduled && <NewScheduledReportForm organizationId={organizationId} />}
+          {(scheduledDefinitions ?? []).length === 0 ? (
+            <EmptyState
+              title="No scheduled report definitions"
+              description={
+                canManageScheduled
+                  ? "Create a definition above to record the intended cadence."
+                  : "No definitions exist for this organization yet."
+              }
+            />
+          ) : (
+            <ul className="divide-y divide-border rounded-[--radius-card] border border-border bg-surface shadow-sm">
+              {(scheduledDefinitions ?? []).map((definition) => {
+                const recipients = (definition.recipients ?? []) as string[];
+                return (
+                  <li
+                    key={definition.id}
+                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-2 text-sm font-medium text-ink">
+                        {definition.report_type.replaceAll("_", " ")}
+                        <span className="rounded bg-surface-sunken px-1.5 text-[10px] font-bold uppercase text-ink-secondary">
+                          {definition.frequency.replaceAll("_", " ")}
+                        </span>
+                        {!definition.active && (
+                          <span className="rounded bg-surface-sunken px-1.5 text-[10px] font-bold uppercase text-ink-muted">
+                            disabled
+                          </span>
+                        )}
+                        <span className="rounded bg-warning-soft px-1.5 text-[10px] font-bold uppercase text-warning">
+                          not executing
+                        </span>
+                      </p>
+                      <p className="text-xs text-ink-muted">
+                        {definition.timezone} ·{" "}
+                        {recipients.length > 0
+                          ? `${recipients.length} intended recipient(s): ${recipients.join(", ")}`
+                          : "no recipients recorded"}{" "}
+                        · created {definition.created_at.slice(0, 10)}
+                      </p>
+                    </div>
+                    {canManageScheduled && (
+                      <ScheduledReportRowActions id={definition.id} active={definition.active} />
+                    )}
                   </li>
                 );
               })}

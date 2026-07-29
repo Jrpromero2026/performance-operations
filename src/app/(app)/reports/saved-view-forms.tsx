@@ -7,6 +7,7 @@ import {
   saveView,
   toggleSavedViewPin,
 } from "@/lib/actions/operations";
+import { setDefaultView, shareSavedView } from "@/lib/actions/report-admin";
 import type { ActionState } from "@/lib/actions/shared";
 
 const buttonClass =
@@ -50,6 +51,68 @@ export function SaveCurrentReportForm({
       {state.error && <span role="alert" className="text-xs text-negative">{state.error}</span>}
       {state.message && <span role="status" className="text-xs text-positive">{state.message}</span>}
     </form>
+  );
+}
+
+/** Sharing + default controls (Phase 7). Owner-only sharing; share
+ * permission enforced server-side; trainers can never share org-wide. */
+export function SavedViewSharingControls({
+  id,
+  organizationId,
+  sharedScope,
+  isDefault,
+  isOwner,
+  canShare,
+}: {
+  id: string;
+  organizationId: string;
+  sharedScope: string;
+  isDefault: boolean;
+  isOwner: boolean;
+  canShare: boolean;
+}) {
+  const [shareState, shareAction, sharePending] = useActionState<ActionState, FormData>(
+    shareSavedView,
+    {},
+  );
+  const [defaultState, defaultAction, defaultPending] = useActionState<ActionState, FormData>(
+    setDefaultView,
+    {},
+  );
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {isOwner && canShare && (
+        <form action={shareAction}>
+          <input type="hidden" name="view_id" value={id} />
+          <input type="hidden" name="organization_id" value={organizationId} />
+          <input
+            type="hidden"
+            name="shared_scope"
+            value={sharedScope === "personal" ? "organization" : "personal"}
+          />
+          <button type="submit" disabled={sharePending} className={buttonClass}>
+            {sharedScope === "personal" ? "Share with organization" : "Make personal"}
+          </button>
+        </form>
+      )}
+      <form action={defaultAction}>
+        <input type="hidden" name="view_id" value={id} />
+        <input type="hidden" name="is_default" value={String(!isDefault)} />
+        <button type="submit" disabled={defaultPending} className={buttonClass}>
+          {isDefault ? "Clear default" : "Set as default"}
+        </button>
+      </form>
+      {(shareState.error || defaultState.error) && (
+        <span role="alert" className="text-xs text-negative">
+          {shareState.error || defaultState.error}
+        </span>
+      )}
+      {(shareState.message || defaultState.message) && (
+        <span role="status" className="text-xs text-positive">
+          {shareState.message || defaultState.message}
+        </span>
+      )}
+    </div>
   );
 }
 
