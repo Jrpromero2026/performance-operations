@@ -1747,12 +1747,25 @@ export type Database = {
         Row: {
           id: string; owner_id: string; kind: string; page: string;
           name: string; config: Json; pinned: boolean;
+          organization_id: string | null; department_id: string | null;
+          shared_scope: string; is_default: boolean;
+          last_used_at: string | null;
           created_at: string; updated_at: string;
         };
         Insert: {
           owner_id: string; kind: string; page: string; name: string;
-        } & Partial<{ id: string; config: Json; pinned: boolean }>;
-        Update: Partial<{ name: string; config: Json; pinned: boolean }>;
+        } & Partial<{
+          id: string; config: Json; pinned: boolean;
+          organization_id: string | null; department_id: string | null;
+          shared_scope: string; is_default: boolean;
+          last_used_at: string | null;
+        }>;
+        Update: Partial<{
+          name: string; config: Json; pinned: boolean;
+          organization_id: string | null; department_id: string | null;
+          shared_scope: string; is_default: boolean;
+          last_used_at: string | null;
+        }>;
         Relationships: [];
       };
       export_events: {
@@ -1769,6 +1782,183 @@ export type Database = {
           metadata: Json;
         }>;
         Update: never;
+        Relationships: [];
+      };
+      /* ------------------------------------------------------------------
+       * Phase 7 tables (hand-maintained to match migrations 19–20).
+       * ---------------------------------------------------------------- */
+      organization_close_policies: {
+        Row: {
+          organization_id: string; allow_self_approval: boolean;
+          payroll_required_state: string; require_ack_note: boolean;
+          created_at: string; updated_at: string;
+        };
+        Insert: { organization_id: string } & Partial<{
+          allow_self_approval: boolean; payroll_required_state: string;
+          require_ack_note: boolean;
+        }>;
+        Update: Partial<{
+          allow_self_approval: boolean; payroll_required_state: string;
+          require_ack_note: boolean;
+        }>;
+        Relationships: [];
+      };
+      period_close_runs: {
+        Row: {
+          id: string; organization_id: string; reporting_period_id: string;
+          close_version: number; status: string;
+          source_cutoff_at: string | null; readiness_snapshot: Json;
+          blocking_issue_count: number; warning_count: number;
+          initiated_by: string | null; initiated_at: string;
+          reviewed_by: string | null; reviewed_at: string | null;
+          approved_by: string | null; approved_at: string | null;
+          closed_by: string | null; closed_at: string | null;
+          reopened_by: string | null; reopened_at: string | null;
+          reopen_reason: string | null; close_notes: string;
+          report_package_id: string | null; manifest_sha256: string | null;
+          supersedes_close_run_id: string | null;
+          superseded_by_close_run_id: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          organization_id: string; reporting_period_id: string;
+          initiated_by: string;
+        } & Partial<{
+          id: string; close_version: number; status: string;
+          source_cutoff_at: string | null; close_notes: string;
+          supersedes_close_run_id: string | null;
+        }>;
+        Update: Partial<{
+          status: string; source_cutoff_at: string | null;
+          readiness_snapshot: Json; blocking_issue_count: number;
+          warning_count: number; reviewed_by: string | null;
+          reviewed_at: string | null; approved_by: string | null;
+          approved_at: string | null; close_notes: string;
+          report_package_id: string | null;
+        }>;
+        Relationships: [];
+      };
+      period_close_events: {
+        Row: {
+          id: string; period_close_run_id: string; organization_id: string;
+          from_status: string | null; to_status: string;
+          actor_id: string | null; reason: string | null; created_at: string;
+        };
+        Insert: {
+          period_close_run_id: string; organization_id: string;
+          to_status: string;
+        } & Partial<{
+          id: string; from_status: string | null; actor_id: string | null;
+          reason: string | null;
+        }>;
+        Update: never;
+        Relationships: [];
+      };
+      period_close_acknowledgements: {
+        Row: {
+          id: string; period_close_run_id: string; organization_id: string;
+          check_code: string; close_version: number; note: string;
+          acknowledged_by: string | null; created_at: string;
+        };
+        Insert: {
+          period_close_run_id: string; organization_id: string;
+          check_code: string; close_version: number; acknowledged_by: string;
+        } & Partial<{ id: string; note: string }>;
+        Update: never;
+        Relationships: [];
+      };
+      report_packages: {
+        Row: {
+          id: string; organization_id: string; reporting_period_id: string;
+          period_close_run_id: string | null; package_type: string;
+          department_id: string | null; version: number; status: string;
+          generated_by: string | null; generated_at: string;
+          intelligence_version: string | null; payroll_run_id: string | null;
+          payroll_snapshot_version: number | null; filters: Json;
+          payload: Json; warnings: Json; package_sha256: string | null;
+          failure_reason: string | null;
+          supersedes_package_id: string | null;
+          superseded_by_package_id: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          organization_id: string; reporting_period_id: string;
+          package_type: string; generated_by: string;
+        } & Partial<{
+          id: string; department_id: string | null; version: number;
+          status: string; intelligence_version: string | null;
+          payroll_run_id: string | null;
+          payroll_snapshot_version: number | null; filters: Json;
+          payload: Json; warnings: Json; package_sha256: string | null;
+          supersedes_package_id: string | null;
+        }>;
+        Update: Partial<{
+          status: string; payload: Json; warnings: Json;
+          package_sha256: string | null; failure_reason: string | null;
+          superseded_by_package_id: string | null;
+          period_close_run_id: string | null;
+        }>;
+        Relationships: [];
+      };
+      close_exports: {
+        Row: {
+          id: string; organization_id: string; reporting_period_id: string;
+          period_close_run_id: string | null; report_package_id: string | null;
+          export_type: string; file_name: string; mime_type: string;
+          version: number; byte_size: number; sha256: string;
+          row_count: number; filters: Json; payroll_run_id: string | null;
+          payroll_snapshot_version: number | null;
+          generated_by: string | null; superseded: boolean;
+          download_count: number; created_at: string;
+        };
+        Insert: {
+          organization_id: string; reporting_period_id: string;
+          export_type: string; file_name: string; sha256: string;
+          generated_by: string;
+        } & Partial<{
+          id: string; period_close_run_id: string | null;
+          report_package_id: string | null; mime_type: string;
+          version: number; byte_size: number; row_count: number;
+          filters: Json; payroll_run_id: string | null;
+          payroll_snapshot_version: number | null;
+        }>;
+        Update: Partial<{ superseded: boolean; download_count: number }>;
+        Relationships: [];
+      };
+      period_close_manifests: {
+        Row: {
+          id: string; period_close_run_id: string; organization_id: string;
+          payload: Json; manifest_sha256: string; created_by: string | null;
+          created_at: string;
+        };
+        Insert: never; // created only via execute_period_close RPC
+        Update: never;
+        Relationships: [];
+      };
+      scheduled_report_definitions: {
+        Row: {
+          id: string; organization_id: string; department_id: string | null;
+          owner_id: string; saved_view_id: string | null; report_type: string;
+          frequency: string; delivery_channel: string; recipients: Json;
+          timezone: string; active: boolean; execution_enabled: boolean;
+          next_intended_run: string | null; last_intended_run: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          organization_id: string; owner_id: string; report_type: string;
+          frequency: string;
+        } & Partial<{
+          id: string; department_id: string | null;
+          saved_view_id: string | null; delivery_channel: string;
+          recipients: Json; timezone: string; active: boolean;
+          next_intended_run: string | null;
+        }>;
+        Update: Partial<{
+          department_id: string | null; saved_view_id: string | null;
+          report_type: string; frequency: string; delivery_channel: string;
+          recipients: Json; timezone: string; active: boolean;
+          next_intended_run: string | null; last_intended_run: string | null;
+        }>;
         Relationships: [];
       };
     };
@@ -1825,6 +2015,18 @@ export type Database = {
           run_name: string;
           run_status: string;
         }[];
+      };
+      execute_period_close: {
+        Args: { p_run_id: string; p_manifest: Json; p_manifest_sha256: string };
+        Returns: Json;
+      };
+      reopen_period_close: {
+        Args: { p_run_id: string; p_reason: string };
+        Returns: string;
+      };
+      void_period_close: {
+        Args: { p_run_id: string; p_reason: string };
+        Returns: undefined;
       };
     };
     Enums: {
