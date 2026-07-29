@@ -32,6 +32,11 @@ export const NAV_ITEMS: NavItem[] = [
     iconPath: "M12 8v8m3-6.5c0-1-1.3-1.5-3-1.5s-3 .5-3 1.5 1 1.5 3 2 3 1 3 2-1.3 1.5-3 1.5-3-.5-3-1.5M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0Z",
   },
   {
+    href: "/period-close",
+    label: "Period close",
+    iconPath: "M9 12l2 2 4-4m5 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
+  },
+  {
     href: "/trainers",
     label: "Trainers",
     iconPath: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",

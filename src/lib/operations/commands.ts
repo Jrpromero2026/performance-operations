@@ -35,6 +35,8 @@ export const COMMANDS: CommandEntry[] = [
   { id: "page-config-users", group: "Pages", label: "Users & access", href: "/configuration/users", keywords: "members invitations roles", permission: "member:read" },
   { id: "page-audit", group: "Pages", label: "Audit log", href: "/audit", keywords: "history events activity", permission: "audit:read" },
   { id: "page-notifications", group: "Pages", label: "Notifications", href: "/notifications", keywords: "inbox alerts unread", permission: null },
+  { id: "page-period-close", group: "Pages", label: "Period close", href: "/period-close", keywords: "close month end finalize manifest", permission: "period_close:read" },
+  { id: "action-start-close", group: "Actions", label: "Start period close", href: "/period-close/new", keywords: "close period new finalize", permission: "period_close:create" },
   // Actions
   { id: "action-upload-import", group: "Actions", label: "Upload import file", href: "/imports/new", keywords: "new csv setmore", permission: "import:upload" },
   { id: "action-create-payroll", group: "Actions", label: "Create payroll run", href: "/payroll/new", keywords: "new run prepare", permission: "payroll:create" },
