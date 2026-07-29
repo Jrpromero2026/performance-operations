@@ -47,6 +47,16 @@
 | C37 | 2026-07-29 | Intelligence access narrows to org / department-scoped / self(none); trainer self scope is forced by the service and breakdowns are denied for self access; RLS re-enforces underneath (loader uses the actor's client). |
 | C38 | 2026-07-29 | Metrics calculate live; the dataset loader's fact shape is the designed cache/materialization boundary (client lifetime history first candidate). No caching built until needed. |
 
+| C39 | 2026-07-29 | The reporting-period status model (draft/open/closed/locked) is preserved; the fine-grained close lifecycle lives on `period_close_runs` (close_review → ready_to_close → closing → closed; superseded/voided terminal). `reporting_periods.status='closed'` is settable ONLY inside the close RPCs (GUC-gated trigger, cleared immediately after use — migration 21). |
+| C40 | 2026-07-29 | Close readiness is COMPUTED live, never persisted as checklist rows; the run stores only the latest summary snapshot, and full results freeze into the manifest. Readiness regression on a ready run revokes readiness and clears review/approval. Missing information never passes. |
+| C41 | 2026-07-29 | Separation of duties on close fails closed: approver ≠ initiator unless `organization_close_policies.allow_self_approval` is explicitly true (org-configurable; default false; enforced in the action AND the execute RPC). Reopen is platform-admin only; void authority = `period_close:review` (no separate void permission) and applies to unfinalized runs only. |
+| C42 | 2026-07-29 | The close manifest stores references + hashes (never operational datasets or client PII), serialized with recursively sorted keys and sha256-hashed; volatile execution fields stay out of the hashed payload. Reopen supersedes but never deletes manifests, packages, or exports. |
+| C43 | 2026-07-29 | Export storage strategy: NO storage bucket. Exports regenerate deterministically from frozen sources and every download re-verifies the recorded sha256 (409 on mismatch). Regeneration cost accepted in exchange for tamper-evidence and no second copy of payroll data. |
+| C44 | 2026-07-29 | Accounting CSVs: deterministic columns, UTF-8 + CRLF, integer cents raw alongside USD presentation columns, empty cells for missing values (never fake zeros), and formula-injection protection (`'` prefix on `=+-@`/tab/CR cells — negative numbers included, fail-safe over cosmetics). |
+| C45 | 2026-07-29 | Payroll is required for close ONLY when the period has active appointments (zero-activity periods close without payroll, with an acknowledged warning); the payroll-register export requirement follows the same condition. Required-before-close exports are provisionally payroll register + executive summary pending business confirmation. |
+| C46 | 2026-07-29 | Scheduled reports are DEFINITIONS only: `execution_enabled` is CHECK-constrained false at the database; recipients must be organization members; every surface states execution is not enabled. No cron/email/webhook infrastructure exists. |
+| C47 | 2026-07-29 | Saved-view sharing: owner-only scope changes; non-personal scopes require `saved_report:share`; one default per scope target (partial unique indexes); default views auto-apply their reporting period only after validating it still exists in the organization. |
+
 ## Working Assumptions
 
 | # | Assumption | Revisit when |
@@ -93,3 +103,11 @@ Do not encode assumptions for any of these into calculation logic.
 | U6 | Auth provider details: email/password vs magic link vs SSO; invite flow. | Business owners. |
 | U7 | Hosting/deployment target details (dedicated Vercel project name, environments). | Owner (must be a brand-new project). |
 | U8 | Data retention and export obligations for payroll records. | Business owners / compliance. |
+| U9a | Payroll finalization policy per organization for close: is `posted` sufficient or must runs be `locked`? (Configurable via `organization_close_policies.payroll_required_state`; default posted.) | Business owners. |
+| U9b | Approver requirements: which roles may approve a close, is a second approver ever required, and should self-approval ever be allowed outside dev? (Currently fails closed; org policy escape hatch exists.) | Business owners. |
+| U9c | Which report packages and exports are MANDATORY before close? (Provisional: executive package + payroll register [when payroll exists] + executive summary CSV.) | Business owners / accountant. |
+| U9d | Accounting export column requirements and GL account mapping for the club's bookkeeping system. | Accountant. |
+| U9e | Retention periods for close manifests, packages, exports, and acknowledgement notes. | Business owners / compliance. |
+| U9f | Should compensation-plan/assignment changes be blocked while a period is closed? (Currently unguarded: posted payroll is frozen, but a re-close after reopen would see the new plans.) | Business owners. |
+| U9g | Failed-import disposition workflow: is acknowledging a failed batch at close sufficient, or does a formal disposition process need to exist? | Business owners. |
+| U9h | Scheduled-report delivery expectations (medium, cadence, recipients) once execution infrastructure is built. | Business owners. |

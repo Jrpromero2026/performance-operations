@@ -105,7 +105,7 @@ the UI reflects the corrected selection.
 
 See `AUTHORIZATION_MODEL.md` for the full model.
 
-## Implemented Domain Layers (Phases 3–6)
+## Implemented Domain Layers (Phases 3–7)
 
 The "future" sections below became reality with dedicated documents:
 
@@ -124,6 +124,17 @@ The "future" sections below became reality with dedicated documents:
   COMMAND_PALETTE.md. Dashboards, alerts, notifications, palette/search,
   and the Report Center all CONSUME the engine — no UI-side business
   math, no dashboard-specific SQL.
+- **Period Close (Phase 7)** — PERIOD_CLOSE_ARCHITECTURE.md,
+  PERIOD_CLOSE_STATE_MACHINE.md, PERIOD_CLOSE_READINESS.md,
+  CLOSE_MANIFEST.md, REPORT_PACKAGE_ARCHITECTURE.md, EXPORT_MANIFEST.md,
+  ACCOUNTING_EXPORTS.md, POST_CLOSE_CHANGE_GUARDS.md,
+  SAVED_REPORT_VIEWS.md, SCHEDULED_REPORT_DEFINITIONS.md. The close is a
+  workflow/packaging layer over the existing engines: readiness consumes
+  pipeline state + intelligence, packages/exports freeze engine output
+  with hashes, the close RPC atomically freezes an immutable manifest,
+  and database guards block material changes in closed periods
+  (`reporting_periods.status='closed'` is settable only inside the close
+  RPCs).
 
 ## Original Import Architecture Sketch (superseded by Phase 3 docs)
 

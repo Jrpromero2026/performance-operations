@@ -72,15 +72,38 @@
 - ✅ Operational alerts from engine readiness + pipeline states
 - ✅ Report Center (quick report, saved views, export history + CSV),
   department/trainer overviews
-- ⏳ Saved-view sharing + scheduled reports: declared placeholders
+- ✅ Saved-view sharing + scheduled reports (delivered in Phase 7)
 
-## Phase 7 — Integrations
+## Phase 7 — Period Close, Report Packages, Export Automation ✅ (complete)
+
+- ✅ Close readiness checklist (~29 checks) consuming existing engines
+  only; missing information never passes; deep links + acknowledgements
+- ✅ DB-enforced close lifecycle (close_review → ready_to_close →
+  closing → closed; reopen → superseded + versioned new cycle; void)
+- ✅ Separation of duties failing closed (org policy can allow
+  self-approval); atomic close RPC with full re-validation
+- ✅ Immutable hashed close manifest (references + hashes, no PII)
+- ✅ Versioned, hash-frozen report packages (executive, department,
+  payroll, trainer statements, import reconciliation)
+- ✅ Accounting CSV exports (injection-protected, deterministic,
+  integer cents + USD) with regenerate-and-verify downloads (no bucket)
+- ✅ Post-close change guards on appointments/payroll/time/adjustments/
+  periods with reopen deep links
+- ✅ Saved-view sharing (personal/organization/department) + defaults
+  with period auto-apply; scheduled-report DEFINITIONS (execution
+  constrained off at the DB)
+- ⏳ Accounting column mapping, mandatory-artifact policy, retention
+  windows, and revenue definitions await business decisions
+  (docs/DECISION_LOG.md, docs/INPUTS_REQUIRED.md)
+
+## Phase 8 — Integrations
 
 - Direct Setmore/Acuity API sync (replacing manual CSV where possible)
-- Accounting/payroll-provider export formats
-- Scheduled report delivery (email)
+- Accounting/payroll-provider export formats (column mapping confirmed)
+- Scheduled report delivery (email/webhooks — enables the Phase 7
+  definitions)
 
-## Phase 8 — Production Hardening
+## Phase 9 — Production Hardening
 
 - RLS test suite expansion and security review
 - Performance passes (indexes, query plans, caching of posted aggregates)

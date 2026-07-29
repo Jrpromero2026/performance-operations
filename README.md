@@ -108,7 +108,19 @@ operations docs
 [docs/NOTIFICATION_MODEL.md](docs/NOTIFICATION_MODEL.md),
 [docs/SEARCH_ARCHITECTURE.md](docs/SEARCH_ARCHITECTURE.md),
 [docs/COMMAND_PALETTE.md](docs/COMMAND_PALETTE.md),
-[docs/PHASE_6_REPORT.md](docs/PHASE_6_REPORT.md)). Observed source-export
+[docs/PHASE_6_REPORT.md](docs/PHASE_6_REPORT.md)), and the Phase 7
+period-close docs
+([docs/PERIOD_CLOSE_ARCHITECTURE.md](docs/PERIOD_CLOSE_ARCHITECTURE.md),
+[docs/PERIOD_CLOSE_STATE_MACHINE.md](docs/PERIOD_CLOSE_STATE_MACHINE.md),
+[docs/PERIOD_CLOSE_READINESS.md](docs/PERIOD_CLOSE_READINESS.md),
+[docs/CLOSE_MANIFEST.md](docs/CLOSE_MANIFEST.md),
+[docs/REPORT_PACKAGE_ARCHITECTURE.md](docs/REPORT_PACKAGE_ARCHITECTURE.md),
+[docs/EXPORT_MANIFEST.md](docs/EXPORT_MANIFEST.md),
+[docs/ACCOUNTING_EXPORTS.md](docs/ACCOUNTING_EXPORTS.md),
+[docs/SAVED_REPORT_VIEWS.md](docs/SAVED_REPORT_VIEWS.md),
+[docs/SCHEDULED_REPORT_DEFINITIONS.md](docs/SCHEDULED_REPORT_DEFINITIONS.md),
+[docs/POST_CLOSE_CHANGE_GUARDS.md](docs/POST_CLOSE_CHANGE_GUARDS.md),
+[docs/PHASE_7_REPORT.md](docs/PHASE_7_REPORT.md)). Observed source-export
 schemas live in [docs/schemas/](docs/schemas/); real business exports stay
 in gitignored `business-inputs/` and are never committed.
 
@@ -120,6 +132,20 @@ carries in-app notifications; `/reports` is the Report Center (quick
 report, saved views, export history). Every number on every dashboard
 comes from the Performance Intelligence Engine (Phase 5) — the UI
 computes nothing.
+
+## Period close (Phase 7)
+
+`/period-close` runs the controlled end-of-period workflow: a structured
+readiness checklist (consuming existing engines only), explicit review
+and approval with separation of duties (self-approval fails closed
+unless the organization's close policy allows it), an atomic close
+transaction that freezes an immutable hashed manifest, versioned report
+packages, and accounting CSV exports whose downloads are regenerated
+and hash-verified. Closed periods block material operational changes at
+the database level; reopening is an elevated, fully-audited action that
+starts a new versioned close cycle. Saved report views support
+organization sharing and defaults; scheduled reports exist as
+definitions only (execution not yet enabled).
 
 ## Imports (Phase 3)
 

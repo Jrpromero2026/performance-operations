@@ -129,6 +129,44 @@ data-access modules take a validated workspace context, not raw IDs.
 - All new Phase 2 tables have RLS enabled **and forced**, per-command
   policies, and no broad authenticated grants.
 
+## Phase 7 Additions (period close + report administration)
+
+New permission keys (migration 19): `period_close:read`,
+`period_close:create`, `period_close:review`, `period_close:approve`,
+`period_close:execute`, `period_close:reopen`, `period_close:export`,
+`report_package:create`, `report_package:finalize`,
+`saved_report:share`, `scheduled_report:manage`.
+
+Role matrix:
+
+| Role | Period-close authority |
+| --- | --- |
+| `platform_admin` | Everything, including `period_close:reopen` (the only role that can reopen a closed period) |
+| `workspace_admin` | Everything except reopen |
+| `payroll_manager` | read / create / review / export + `report_package:create`, `saved_report:share`, `scheduled_report:manage` (cannot approve or execute a close) |
+| `department_manager` | `period_close:read` only (and department-scoped package visibility via `app.can_access_department`) |
+| `trainer` / `viewer` | none |
+
+Enforcement notes:
+
+- **Separation of duties fails closed**: even with `period_close:approve`
+  AND `period_close:execute`, the execute RPC rejects a close whose
+  approver equals its initiator unless
+  `organization_close_policies.allow_self_approval` is true. The policy
+  table itself is writable only with `org:manage`.
+- `period_close:void` was folded into `period_close:review` (documented
+  deviation) — only unfinalized runs are voidable.
+- High-risk transitions (execute / reopen / void) are SECURITY DEFINER
+  RPCs that re-check permissions internally; RLS additionally gates all
+  table reads/writes (`close_runs_*`, `report_packages_*`,
+  `close_exports_*` policies). `period_close_manifests` is SELECT-only
+  for users — rows are created exclusively by the close RPC.
+- Saved-view sharing beyond `personal` requires `saved_report:share` in
+  the view's organization (RLS + action); visibility of shared views
+  requires `report:read` (+ department access for department scope).
+- `reporting_periods.status='closed'` cannot be set or cleared by ANY
+  role directly — only through the close RPCs (GUC-gated trigger).
+
 ## Denial Behavior
 
 - Server helpers return typed failures; routes render a 404/permission-denied
