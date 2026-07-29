@@ -1,0 +1,22 @@
+# Supabase CLI configuration for the DEDICATED Performance Operations project.
+# This must never be linked to a Supabase project used by any other app.
+project_id = "performance-operations"
+
+[db]
+port = 54322
+major_version = 17
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "app"]
+extra_search_path = ["public"]
+max_rows = 1000
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+
+[studio]
+enabled = true
+port = 54323
