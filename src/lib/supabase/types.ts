@@ -1139,6 +1139,299 @@ export type Database = {
           },
         ];
       };
+      /* ------------------------------------------------------------------
+       * Phase 3 tables (hand-maintained to match migrations 11–13; compact
+       * form — Insert derived from Row; regenerate via Supabase gen-types
+       * for full fidelity when convenient).
+       * ---------------------------------------------------------------- */
+      clients: {
+        Row: {
+          id: string; first_name: string; last_name: string; display_name: string;
+          email: string | null; phone: string | null; status: string; notes: string;
+          created_at: string; updated_at: string;
+        };
+        Insert: { display_name: string } & Partial<{
+          id: string; first_name: string; last_name: string; email: string | null;
+          phone: string | null; status: string; notes: string; created_at: string; updated_at: string;
+        }>;
+        Update: Partial<{
+          first_name: string; last_name: string; display_name: string;
+          email: string | null; phone: string | null; status: string; notes: string;
+        }>;
+        Relationships: [];
+      };
+      client_organization_assignments: {
+        Row: {
+          id: string; client_id: string; organization_id: string;
+          effective_from: string; effective_to: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: { client_id: string; organization_id: string } & Partial<{
+          id: string; effective_from: string; effective_to: string | null;
+        }>;
+        Update: Partial<{ effective_from: string; effective_to: string | null }>;
+        Relationships: [];
+      };
+      client_source_identifiers: {
+        Row: {
+          id: string; client_id: string; organization_id: string; source: string;
+          external_id: string; created_by: string | null; created_at: string;
+        };
+        Insert: {
+          client_id: string; organization_id: string; source: string; external_id: string;
+        } & Partial<{ id: string; created_by: string | null }>;
+        Update: never;
+        Relationships: [];
+      };
+      trainer_source_aliases: {
+        Row: {
+          id: string; organization_id: string; trainer_id: string; source: string;
+          alias: string; alias_normalized: string | null; created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          organization_id: string; trainer_id: string; source: string; alias: string;
+        } & Partial<{ id: string; created_by: string | null }>;
+        Update: never;
+        Relationships: [];
+      };
+      appointment_status_definitions: {
+        Row: { key: string; label: string; sort_order: number; created_at: string };
+        Insert: { key: string; label: string } & Partial<{ sort_order: number }>;
+        Update: Partial<{ label: string; sort_order: number }>;
+        Relationships: [];
+      };
+      source_status_mappings: {
+        Row: {
+          id: string; organization_id: string; source: string;
+          source_value_normalized: string; canonical_status: string;
+          created_by: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          organization_id: string; source: string; source_value_normalized: string;
+          canonical_status: string;
+        } & Partial<{ id: string; created_by: string | null }>;
+        Update: Partial<{ canonical_status: string }>;
+        Relationships: [];
+      };
+      import_batches: {
+        Row: {
+          id: string; organization_id: string; source: string;
+          source_account_identifier: string | null; original_filename: string;
+          storage_path: string; file_hash: string; file_size: number; mime_type: string;
+          adapter_version: string; schema_profile_id: string | null;
+          total_row_count: number; accepted_row_count: number; warning_row_count: number;
+          blocked_row_count: number; duplicate_row_count: number; excluded_row_count: number;
+          posted_row_count: number; status: string; uploaded_by: string | null;
+          uploaded_at: string; parsing_started_at: string | null;
+          parsing_completed_at: string | null; approved_by: string | null;
+          approved_at: string | null; posted_by: string | null; posted_at: string | null;
+          reversed_by: string | null; reversed_at: string | null;
+          failure_code: string | null; sanitized_failure_message: string | null;
+          metadata: Json; created_at: string; updated_at: string;
+        };
+        Insert: {
+          organization_id: string; source: string; original_filename: string;
+          storage_path: string; file_hash: string; file_size: number; mime_type: string;
+        } & Partial<{
+          id: string; source_account_identifier: string | null; adapter_version: string;
+          schema_profile_id: string | null; status: string; uploaded_by: string | null;
+          metadata: Json;
+        }>;
+        Update: Partial<{
+          status: string; adapter_version: string; schema_profile_id: string | null;
+          total_row_count: number; accepted_row_count: number; warning_row_count: number;
+          blocked_row_count: number; duplicate_row_count: number; excluded_row_count: number;
+          posted_row_count: number; parsing_started_at: string | null;
+          parsing_completed_at: string | null; approved_by: string | null;
+          approved_at: string | null; failure_code: string | null;
+          sanitized_failure_message: string | null; metadata: Json;
+        }>;
+        Relationships: [];
+      };
+      import_schema_profiles: {
+        Row: {
+          id: string; organization_id: string; source: string; name: string;
+          header_signature: string; column_mappings: Json; version: number;
+          created_by: string | null; created_at: string;
+        };
+        Insert: {
+          organization_id: string; source: string; name: string;
+          header_signature: string; column_mappings: Json;
+        } & Partial<{ id: string; version: number; created_by: string | null }>;
+        Update: never;
+        Relationships: [];
+      };
+      import_rows: {
+        Row: {
+          id: string; import_batch_id: string; organization_id: string;
+          source_row_number: number; original_row: Json; normalized_row: Json;
+          corrections: Json; row_hash: string; processing_status: string;
+          duplicate_class: string | null; blocking_issue_count: number;
+          warning_count: number; info_count: number; appointment_date: string | null;
+          start_at: string | null; end_at: string | null; duration_minutes: number | null;
+          canonical_status: string | null; external_appointment_id: string | null;
+          listed_price_cents: number | null; amount_paid_cents: number | null;
+          currency: string; matched_trainer_id: string | null;
+          trainer_match_method: string | null; matched_service_id: string | null;
+          service_match_method: string | null; matched_client_id: string | null;
+          client_match_method: string | null; proposed_department_id: string | null;
+          posted_appointment_id: string | null; exclusion_reason: string | null;
+          excluded_by: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          import_batch_id: string; organization_id: string; source_row_number: number;
+          original_row: Json; row_hash: string;
+        } & Partial<{
+          id: string; normalized_row: Json; corrections: Json; processing_status: string;
+          duplicate_class: string | null; blocking_issue_count: number;
+          warning_count: number; info_count: number; appointment_date: string | null;
+          start_at: string | null; end_at: string | null; duration_minutes: number | null;
+          canonical_status: string | null; external_appointment_id: string | null;
+          listed_price_cents: number | null; amount_paid_cents: number | null;
+          currency: string; matched_trainer_id: string | null;
+          trainer_match_method: string | null; matched_service_id: string | null;
+          service_match_method: string | null; matched_client_id: string | null;
+          client_match_method: string | null; proposed_department_id: string | null;
+        }>;
+        Update: Partial<{
+          normalized_row: Json; corrections: Json; processing_status: string;
+          duplicate_class: string | null; blocking_issue_count: number;
+          warning_count: number; info_count: number; appointment_date: string | null;
+          start_at: string | null; end_at: string | null; duration_minutes: number | null;
+          canonical_status: string | null; external_appointment_id: string | null;
+          listed_price_cents: number | null; amount_paid_cents: number | null;
+          matched_trainer_id: string | null; trainer_match_method: string | null;
+          matched_service_id: string | null; service_match_method: string | null;
+          matched_client_id: string | null; client_match_method: string | null;
+          proposed_department_id: string | null; posted_appointment_id: string | null;
+          exclusion_reason: string | null; excluded_by: string | null;
+        }>;
+        Relationships: [];
+      };
+      import_row_issues: {
+        Row: {
+          id: string; import_row_id: string; import_batch_id: string;
+          organization_id: string; code: string; severity: string;
+          field: string | null; message: string; original_value: string | null;
+          suggested_action: string | null; resolution_status: string;
+          resolved_by: string | null; resolved_at: string | null;
+          resolution_note: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          import_row_id: string; import_batch_id: string; organization_id: string;
+          code: string; severity: string; message: string;
+        } & Partial<{
+          id: string; field: string | null; original_value: string | null;
+          suggested_action: string | null; resolution_status: string;
+        }>;
+        Update: Partial<{
+          resolution_status: string; resolved_by: string | null;
+          resolved_at: string | null; resolution_note: string | null;
+        }>;
+        Relationships: [];
+      };
+      import_resolutions: {
+        Row: {
+          id: string; import_batch_id: string; organization_id: string;
+          import_row_id: string | null; action: string; payload: Json;
+          affected_row_count: number; actor_id: string | null; created_at: string;
+        };
+        Insert: {
+          import_batch_id: string; organization_id: string; action: string;
+          actor_id: string;
+        } & Partial<{
+          id: string; import_row_id: string | null; payload: Json;
+          affected_row_count: number;
+        }>;
+        Update: never;
+        Relationships: [];
+      };
+      import_batch_events: {
+        Row: {
+          id: string; import_batch_id: string; organization_id: string;
+          from_status: string | null; to_status: string; actor_id: string | null;
+          reason: string | null; created_at: string;
+        };
+        Insert: {
+          import_batch_id: string; organization_id: string; to_status: string;
+        } & Partial<{
+          id: string; from_status: string | null; actor_id: string | null;
+          reason: string | null;
+        }>;
+        Update: never;
+        Relationships: [];
+      };
+      appointments: {
+        Row: {
+          id: string; organization_id: string; department_id: string | null;
+          trainer_id: string; client_id: string | null; service_id: string;
+          appointment_date: string; start_at: string; end_at: string;
+          duration_minutes: number; timezone: string; canonical_status: string;
+          record_state: string; source: string;
+          external_appointment_id: string | null; source_created_at: string | null;
+          source_updated_at: string | null; source_listed_price_cents: number | null;
+          source_amount_paid_cents: number | null; source_amount_due_cents: number | null;
+          currency: string; payment_status: string | null; participant_count: number;
+          notes: string; import_batch_id: string; import_row_id: string;
+          posted_at: string; created_at: string; updated_at: string;
+        };
+        Insert: never; // created only via post_import_batch RPC
+        Update: Partial<{
+          department_id: string | null; canonical_status: string; record_state: string;
+          notes: string; payment_status: string | null;
+        }>;
+        Relationships: [];
+      };
+      appointment_participants: {
+        Row: {
+          id: string; appointment_id: string; organization_id: string;
+          client_id: string; role: string; created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      appointment_status_history: {
+        Row: {
+          id: string; appointment_id: string; organization_id: string;
+          previous_status: string | null; new_status: string; change_source: string;
+          reason: string | null; changed_by: string | null; created_at: string;
+        };
+        Insert: {
+          appointment_id: string; organization_id: string; new_status: string;
+          change_source: string; changed_by: string;
+        } & Partial<{ id: string; previous_status: string | null; reason: string | null }>;
+        Update: never;
+        Relationships: [];
+      };
+      appointment_source_links: {
+        Row: {
+          id: string; appointment_id: string; organization_id: string;
+          import_batch_id: string; import_row_id: string; source: string;
+          external_appointment_id: string | null; link_type: string; created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      appointment_corrections: {
+        Row: {
+          id: string; appointment_id: string; organization_id: string;
+          field: string; previous_value: string | null; new_value: string | null;
+          reason: string; change_source: string; corrected_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          appointment_id: string; organization_id: string; field: string;
+          reason: string; corrected_by: string;
+        } & Partial<{
+          id: string; previous_value: string | null; new_value: string | null;
+          change_source: string;
+        }>;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -1147,6 +1440,14 @@ export type Database = {
       accept_invitation: {
         Args: { p_token: string };
         Returns: string;
+      };
+      post_import_batch: {
+        Args: { p_batch_id: string };
+        Returns: Json;
+      };
+      reverse_import_batch: {
+        Args: { p_batch_id: string; p_reason: string };
+        Returns: Json;
       };
       get_invitation_preview: {
         Args: { p_token: string };
