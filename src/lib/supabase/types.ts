@@ -1240,6 +1240,7 @@ export type Database = {
         }>;
         Update: Partial<{
           status: string; adapter_version: string; schema_profile_id: string | null;
+          storage_path: string;
           total_row_count: number; accepted_row_count: number; warning_row_count: number;
           blocked_row_count: number; duplicate_row_count: number; excluded_row_count: number;
           posted_row_count: number; parsing_started_at: string | null;
