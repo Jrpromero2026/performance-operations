@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { ActorContext } from "@/lib/actions/shared";
 import type { Json } from "@/lib/supabase/types";
-import { parseCsv, rowToObject, type CsvParseResult } from "./csv";
+import { rowToObject, type CsvParseResult } from "./csv";
 import {
   classifyDuplicate,
   matchClient,

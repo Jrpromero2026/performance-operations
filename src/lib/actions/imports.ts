@@ -7,7 +7,6 @@ import { parseCsv, MAX_IMPORT_ROWS } from "@/lib/imports/csv";
 import {
   detectAdapter,
   headerSignature,
-  REGISTERED_ADAPTERS,
 } from "@/lib/imports/adapters";
 import {
   createGenericAdapter,
