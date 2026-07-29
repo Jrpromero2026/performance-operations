@@ -87,6 +87,17 @@ export default async function ImportBatchPage({
 
   const uploader = batch.uploader as unknown as { full_name: string; email: string } | null;
   const approver = batch.approver as unknown as { full_name: string } | null;
+
+  // Phase 4 dependency guard: a posted batch referenced by approved/posted/
+  // locked payroll cannot be reversed — surface the dependency BEFORE the
+  // user attempts it (the RPC also fails closed).
+  let payrollDependencies: { payroll_run_id: string; run_name: string; run_status: string }[] = [];
+  if (batch.status === "posted" && can("import:reverse")) {
+    const { data: deps } = await actor.supabase.rpc("payroll_dependencies_for_batch", {
+      p_batch_id: batch.id,
+    });
+    payrollDependencies = deps ?? [];
+  }
   const orgName = (batch.organizations as unknown as { name: string } | null)?.name ?? "";
   const metadata = batch.metadata as unknown as {
     detected_adapter?: string | null;
@@ -157,9 +168,31 @@ export default async function ImportBatchPage({
         {batch.status === "approved" && can("import:post") && (
           <PostButton batchId={batch.id} expectedCount={batch.accepted_row_count} />
         )}
-        {batch.status === "posted" && can("import:reverse") && <ReverseForm batchId={batch.id} />}
+        {batch.status === "posted" && can("import:reverse") && payrollDependencies.length === 0 && (
+          <ReverseForm batchId={batch.id} />
+        )}
         {can("import:download") && <DownloadOriginalButton batchId={batch.id} />}
       </div>
+
+      {payrollDependencies.length > 0 && (
+        <div className="rounded-[--radius-card] border border-warning bg-warning-soft p-3 text-sm text-warning">
+          <p className="font-semibold">Reversal blocked by payroll</p>
+          <p>
+            Appointments from this batch are referenced by approved, posted, or locked payroll.
+            Reopen or supersede the dependent run(s) before reversing this import:
+          </p>
+          <ul className="mt-1 list-inside list-disc">
+            {payrollDependencies.map((dep) => (
+              <li key={dep.payroll_run_id}>
+                <Link href={`/payroll/${dep.payroll_run_id}`} className="font-medium underline">
+                  {dep.run_name}
+                </Link>{" "}
+                ({dep.run_status})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <section className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6" aria-label="Row counts">
         {[
