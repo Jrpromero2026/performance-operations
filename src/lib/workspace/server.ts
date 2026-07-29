@@ -66,13 +66,23 @@ export async function getWorkspaceContext(): Promise<WorkspaceContext> {
 
   if (error || !membershipRows) return offlineContext(requested);
 
+  interface MembershipQueryRow {
+    organization_id: string;
+    is_default: boolean;
+    effective_to: string | null;
+    roles: { key: string } | null;
+    organizations: WorkspaceOption | null;
+  }
+
   const memberships: MembershipGrant[] = [];
   const options = new Map<string, WorkspaceOption>();
   let defaultOrganizationId: string | null = null;
 
-  for (const row of membershipRows) {
-    const role = row.roles as unknown as { key: string } | null;
-    const org = row.organizations as unknown as WorkspaceOption | null;
+  // PostgREST returns to-one embeds as objects; without generated types the
+  // inference defaults to arrays, hence the unknown hop.
+  for (const row of membershipRows as unknown as MembershipQueryRow[]) {
+    const role = row.roles;
+    const org = row.organizations;
     if (!role || !org) continue;
     memberships.push({
       organizationId: row.organization_id,
@@ -92,7 +102,7 @@ export async function getWorkspaceContext(): Promise<WorkspaceContext> {
       .select("id, slug, name")
       .eq("status", "active")
       .order("name");
-    for (const org of allOrgs ?? []) {
+    for (const org of (allOrgs ?? []) as WorkspaceOption[]) {
       options.set(org.id, { id: org.id, slug: org.slug, name: org.name });
     }
   }

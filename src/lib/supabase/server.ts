@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { env, isSupabaseConfigured } from "@/lib/env";
-import type { Database } from "./types";
 
 /**
  * Server-side Supabase client bound to the request's auth cookies.
@@ -9,11 +8,15 @@ import type { Database } from "./types";
  *
  * Returns null when Supabase is not configured — callers must degrade to
  * an explicit "not configured" state instead of crashing.
+ *
+ * The client is intentionally untyped until database types are generated
+ * from the live project (see README); data-access modules type every row at
+ * the mapping boundary using src/lib/supabase/types.ts.
  */
 export async function createSupabaseServerClient() {
   if (!isSupabaseConfigured()) return null;
   const cookieStore = await cookies();
-  return createServerClient<Database>(
+  return createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL!,
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {

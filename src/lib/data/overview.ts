@@ -73,22 +73,35 @@ export async function getOverviewData(
       .limit(8),
   ]);
 
+  type DeptRow = Pick<
+    import("@/lib/supabase/types").DepartmentRow,
+    "id" | "name" | "status" | "organization_id"
+  >;
+  type PeriodRow = Pick<
+    import("@/lib/supabase/types").ReportingPeriodRow,
+    "id" | "label" | "start_date" | "end_date" | "status"
+  >;
+  type AuditRow = Pick<
+    import("@/lib/supabase/types").AuditEventRow,
+    "id" | "action" | "entity_type" | "created_at"
+  >;
+
   return {
     source: "database",
-    departments: (departmentsRes.data ?? []).map((d) => ({
+    departments: ((departmentsRes.data ?? []) as DeptRow[]).map((d) => ({
       id: d.id,
       name: d.name,
       status: d.status,
       organizationName: orgNames.get(d.organization_id) ?? "Unknown",
     })),
-    reportingPeriods: (periodsRes.data ?? []).map((p) => ({
+    reportingPeriods: ((periodsRes.data ?? []) as PeriodRow[]).map((p) => ({
       id: p.id,
       label: p.label,
       startDate: p.start_date,
       endDate: p.end_date,
       status: p.status,
     })),
-    auditEvents: (auditRes.data ?? []).map((e) => ({
+    auditEvents: ((auditRes.data ?? []) as AuditRow[]).map((e) => ({
       id: e.id,
       action: e.action,
       entityType: e.entity_type,
