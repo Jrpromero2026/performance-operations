@@ -123,7 +123,8 @@ export function generateBuckets(
   }
 
   if (granularity === "quarterly") {
-    let { y, m } = parseDate(dateFrom);
+    const { m } = parseDate(dateFrom);
+    let { y } = parseDate(dateFrom);
     let q = Math.floor((m - 1) / 3) + 1;
     for (;;) {
       const firstMonth = (q - 1) * 3 + 1;
