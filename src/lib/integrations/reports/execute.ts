@@ -13,6 +13,10 @@ import type { ActorContext } from "@/lib/actions/shared";
 import { actorCan, writeAudit } from "@/lib/actions/shared";
 import { notifyPermissionHolders } from "@/lib/operations/notify";
 import { generateExecutivePackage, generatePayrollPackage } from "@/lib/close/packages";
+import {
+  ANALYTICS_REPORT_TYPES,
+  generateAnalyticsSubscriptionArtifact,
+} from "@/lib/analytics/exports/subscriptions";
 import { buildMetricReportCsv } from "@/lib/reports/metric-report";
 import { resolveRecipients } from "../delivery/recipients";
 import { safeSubject } from "../delivery/email";
@@ -171,6 +175,33 @@ export async function executeScheduledReport(
         metric_count: report.metricCount,
       };
       artifactSha = report.sha256;
+    } else if (ANALYTICS_REPORT_TYPES.has(definition.report_type)) {
+      // Phase 9 analytics subscriptions: versioned analytics packages on
+      // the same infrastructure. These are compositions, not close
+      // financial artifacts — they regenerate per occurrence and carry
+      // the finality label instead of referencing frozen close packages.
+      const result = await generateAnalyticsSubscriptionArtifact(
+        actor,
+        definition,
+        period,
+      );
+      reportPackageId = result.id;
+      const { data: pkg } = await actor.supabase
+        .from("report_packages")
+        .select("package_sha256")
+        .eq("id", result.id)
+        .maybeSingle();
+      artifactSha = pkg?.package_sha256 ?? null;
+      artifact = {
+        kind: "analytics_package",
+        report_type: definition.report_type,
+        package_id: result.id,
+        version: result.version,
+        sha256: artifactSha,
+        finality: isClosed
+          ? "FINAL — period is closed"
+          : "NOT FINAL — generated from an active period",
+      };
     } else {
       const params = {
         organizationId: definition.organization_id,

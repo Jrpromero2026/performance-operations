@@ -124,6 +124,15 @@ const REPORT_TYPES = [
   "executive_package",
   "department_package",
   "payroll_package",
+  // Phase 9 analytics subscriptions (see lib/analytics/exports/subscriptions)
+  "executive_scorecard",
+  "department_scorecard",
+  "trainer_self_scorecard",
+  "goal_progress_report",
+  "benchmark_report",
+  "cohort_report",
+  "analytics_dashboard",
+  "board_presentation_package",
 ];
 
 function isValidTimezone(timezone: string): boolean {

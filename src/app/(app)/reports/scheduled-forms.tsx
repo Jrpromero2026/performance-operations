@@ -28,7 +28,19 @@ export function NewScheduledReportForm({ organizationId }: { organizationId: str
           Report type
         </label>
         <select id="sched-type" name="report_type" required defaultValue="quick_report" className={inputClass}>
-          {["quick_report", "executive_package", "department_package", "payroll_package"].map((t) => (
+          {[
+            "quick_report",
+            "executive_package",
+            "department_package",
+            "payroll_package",
+            // Phase 9 analytics subscriptions (analytics packages)
+            "executive_scorecard",
+            "trainer_self_scorecard",
+            "goal_progress_report",
+            "benchmark_report",
+            "cohort_report",
+            "board_presentation_package",
+          ].map((t) => (
             <option key={t} value={t}>
               {t.replaceAll("_", " ")}
             </option>
