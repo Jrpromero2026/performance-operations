@@ -351,22 +351,35 @@ test("10. delivery failure (channel unconfigured) then manual retry succeeds", a
     .toBeGreaterThan(0);
 
   // Restore the test channel, then retry the failed delivery manually.
+  // Track the SPECIFIC event row (the list shows only the latest 40
+  // events, so global row counts are not a stable signal once history
+  // accumulates — the retried row itself must reach accepted).
   await page.locator('select[name="provider"]').selectOption("test");
   await page.getByRole("button", { name: "Save channel" }).click();
   await expect(page.getByText(/TEST MODE/).first()).toBeVisible({ timeout: 20_000 });
-  const acceptedBefore = await page
-    .locator('[data-delivery-status="accepted"]')
-    .count();
-  await page.getByTestId("retry-delivery").first().click();
+  // Retrying never mutates the finalized event — it creates a NEW
+  // delivery event, which lands at the top of the newest-first list.
+  const newestBefore = await page
+    .locator("tr[data-delivery-id]")
+    .first()
+    .getAttribute("data-delivery-id");
+  await page
+    .locator('tr[data-delivery-status="failed"]')
+    .first()
+    .getByTestId("retry-delivery")
+    .click();
   await expect
     .poll(
       async () => {
         await page.reload();
-        return page.locator('[data-delivery-status="accepted"]').count();
+        const first = page.locator("tr[data-delivery-id]").first();
+        const id = await first.getAttribute("data-delivery-id").catch(() => null);
+        const status = await first.getAttribute("data-delivery-status").catch(() => null);
+        return id !== newestBefore ? status : "waiting";
       },
       { timeout: 60_000 },
     )
-    .toBeGreaterThan(acceptedBefore);
+    .toBe("accepted");
 });
 
 test("11. job queue: dead-letter the failed job, requeue with reason, worker completes", async ({

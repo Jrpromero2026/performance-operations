@@ -276,6 +276,152 @@ export class IntelligenceSession {
     return metricIds.map((id) => this.getMetric(id, scope, filters));
   }
 
+  /**
+   * Evaluate a metric over an arbitrary sub-window of the loaded dataset
+   * (multi-period analytics — same mechanism trend buckets use). Windows
+   * outside the session's primary range return unavailable: the pooled
+   * facts are only guaranteed contiguous inside it, and a silently
+   * partial number is worse than an honest refusal.
+   */
+  getMetricForWindow(
+    metricId: string,
+    window: { dateFrom: string; dateTo: string },
+    scopeInput: ScopeInput = {},
+    filterInput: FilterInput = {},
+  ): MetricResult {
+    const definition = METRIC_DEFINITIONS.get(metricId);
+    const filters: MetricFilters = {
+      ...this.buildFilters(filterInput),
+      dateFrom: window.dateFrom,
+      dateTo: window.dateTo,
+    };
+    if (!definition) {
+      return deniedResult(
+        {
+          id: metricId,
+          name: metricId,
+          category: "appointments",
+          definition: "",
+          formula: "",
+          unit: "count",
+          dependencies: [],
+          scopes: [],
+          requiredPermission: "org:read",
+          version: INTELLIGENCE_VERSION,
+        },
+        { organizationId: this.dataset.organizationId },
+        filters,
+        `Unknown metric: ${metricId}`,
+      );
+    }
+    if (
+      window.dateFrom < this.dataset.dateFrom ||
+      window.dateTo > this.dataset.dateTo
+    ) {
+      return deniedResult(
+        definition,
+        { organizationId: this.dataset.organizationId, ...scopeInput },
+        filters,
+        "The requested window is outside this session's loaded range.",
+      );
+    }
+    const resolved = this.effectiveScope(definition, scopeInput);
+    if ("denied" in resolved) {
+      return deniedResult(
+        definition,
+        { organizationId: this.dataset.organizationId, ...scopeInput },
+        filters,
+        resolved.denied,
+      );
+    }
+    const evaluator = METRIC_EVALUATORS.get(metricId)!;
+    const outcome = evaluator(
+      buildWindowContext(
+        this.dataset,
+        resolved.scope,
+        filters,
+        window.dateFrom,
+        window.dateTo,
+      ),
+    );
+    return {
+      metricId,
+      scope: resolved.scope,
+      filters,
+      value: outcome.value,
+      unit: definition.unit,
+      health: outcome.health,
+      reasons: outcome.reasons ?? [],
+      warnings: outcome.warnings ?? [],
+      metadata: outcome.metadata ?? {},
+      dependencies: definition.dependencies,
+      calculatedAt: new Date().toISOString(),
+      version: INTELLIGENCE_VERSION,
+    };
+  }
+
+  /** Breakdown over an arbitrary sub-window (same rules as getBreakdown). */
+  getBreakdownForWindow(
+    metricId: string,
+    groupBy: BreakdownGroup,
+    window: { dateFrom: string; dateTo: string },
+    scopeInput: ScopeInput = {},
+    filterInput: FilterInput = {},
+  ): MetricBreakdown {
+    const definition = METRIC_DEFINITIONS.get(metricId);
+    const filters: MetricFilters = {
+      ...this.buildFilters(filterInput),
+      dateFrom: window.dateFrom,
+      dateTo: window.dateTo,
+    };
+    if (!definition) {
+      return {
+        metricId,
+        groupBy,
+        unit: "count",
+        rows: [],
+        health: "unavailable",
+        reasons: [`Unknown metric: ${metricId}`],
+      };
+    }
+    if (
+      window.dateFrom < this.dataset.dateFrom ||
+      window.dateTo > this.dataset.dateTo
+    ) {
+      return {
+        metricId,
+        groupBy,
+        unit: definition.unit,
+        rows: [],
+        health: "unavailable",
+        reasons: ["The requested window is outside this session's loaded range."],
+      };
+    }
+    const access = resolveAccess(
+      this.actor.memberships,
+      this.dataset.organizationId,
+      definition.requiredPermission,
+      definition.selfPermission,
+      this.selfTrainerId,
+    );
+    const resolved = this.effectiveScope(definition, scopeInput);
+    if ("denied" in resolved || access.kind === "self") {
+      const reason =
+        "denied" in resolved
+          ? resolved.denied
+          : "Breakdowns are not available with self-scoped access.";
+      return {
+        metricId,
+        groupBy,
+        unit: definition.unit,
+        rows: [],
+        health: "unavailable",
+        reasons: [reason],
+      };
+    }
+    return computeBreakdown(this.dataset, resolved.scope, filters, metricId, groupBy);
+  }
+
   /** Breakdowns require non-self access (a trainer has no peers to list). */
   getBreakdown(
     metricId: string,

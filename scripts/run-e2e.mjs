@@ -10,9 +10,14 @@ const suites = suite === "all" ? ["offline", "live"] : [suite];
 
 for (const current of suites) {
   console.log(`\n▶ Playwright suite: ${current}`);
+  // The live suite mutates shared dev-database state (imports, payroll,
+  // close, deliveries) — specs interfere under parallel workers, so it
+  // always runs serialized. Offline specs stay parallel.
+  const args =
+    current === "live" ? ["playwright", "test", "--workers=1"] : ["playwright", "test"];
   const result = spawnSync(
     process.platform === "win32" ? "npx.cmd" : "npx",
-    ["playwright", "test"],
+    args,
     {
       stdio: "inherit",
       shell: process.platform === "win32",

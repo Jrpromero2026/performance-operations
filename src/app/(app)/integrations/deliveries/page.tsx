@@ -103,7 +103,12 @@ export default async function DeliveriesPage() {
               </thead>
               <tbody>
                 {(events ?? []).map((event) => (
-                  <tr key={event.id} className="border-b border-border last:border-0" data-delivery-status={event.status}>
+                  <tr
+                    key={event.id}
+                    className="border-b border-border last:border-0"
+                    data-delivery-status={event.status}
+                    data-delivery-id={event.id}
+                  >
                     <td className="px-3 py-2 font-mono text-xs">
                       {event.created_at.slice(5, 16).replace("T", " ")}
                     </td>
