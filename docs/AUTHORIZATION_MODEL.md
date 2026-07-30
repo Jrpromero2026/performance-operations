@@ -167,6 +167,31 @@ Enforcement notes:
 - `reporting_periods.status='closed'` cannot be set or cleared by ANY
   role directly — only through the close RPCs (GUC-gated trigger).
 
+## Phase 8 Additions (integrations + automation)
+
+Seventeen new keys (migration 22): `integration:read/create/update/
+disable/manage_credentials/sync/reset_cursor/view_failures`,
+`job:read/retry/cancel/manage_dead_letter`, `scheduled_report:execute`,
+`report_delivery:read/manage/retry`, `email_policy:manage`.
+
+| Role | Integration/automation authority |
+| --- | --- |
+| `platform_admin` | Everything, incl. `integration:reset_cursor` (only role) and dev worker claiming |
+| `workspace_admin` | Org-scoped everything except cursor reset (incl. credentials + email policy) |
+| `payroll_manager` | `integration:read`, `job:read`, `scheduled_report:execute`, `report_delivery:read/retry` — NO provider credential access |
+| `department_manager` | `report_delivery:read` only |
+| `trainer` | `report_delivery:read` limited by recipient self-scope on delivery events (their own deliveries only) |
+| `viewer` | none |
+
+Enforcement notes: job mutations flow exclusively through per-org
+permission-checked definer RPCs (no direct UPDATE policies on
+`background_jobs`); job CLAIMING is a system action (service_role or
+platform admin); credential retrieval is server-exclusive (service_role
+or platform-admin + the server-held worker key — a browser can never
+present it); `integration_source_records` and finalized
+`email_delivery_events` are immutable; `vault` schema is inaccessible
+to the authenticated role entirely.
+
 ## Denial Behavior
 
 - Server helpers return typed failures; routes render a 404/permission-denied

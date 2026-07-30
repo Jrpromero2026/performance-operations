@@ -120,7 +120,21 @@ period-close docs
 [docs/SAVED_REPORT_VIEWS.md](docs/SAVED_REPORT_VIEWS.md),
 [docs/SCHEDULED_REPORT_DEFINITIONS.md](docs/SCHEDULED_REPORT_DEFINITIONS.md),
 [docs/POST_CLOSE_CHANGE_GUARDS.md](docs/POST_CLOSE_CHANGE_GUARDS.md),
-[docs/PHASE_7_REPORT.md](docs/PHASE_7_REPORT.md)). Observed source-export
+[docs/PHASE_7_REPORT.md](docs/PHASE_7_REPORT.md)), and the Phase 8
+integration docs
+([docs/INTEGRATION_ARCHITECTURE.md](docs/INTEGRATION_ARCHITECTURE.md),
+[docs/INTEGRATION_SECURITY.md](docs/INTEGRATION_SECURITY.md),
+[docs/PROVIDER_ADAPTER_CONTRACT.md](docs/PROVIDER_ADAPTER_CONTRACT.md),
+[docs/BACKGROUND_JOB_ARCHITECTURE.md](docs/BACKGROUND_JOB_ARCHITECTURE.md),
+[docs/JOB_STATE_MACHINE.md](docs/JOB_STATE_MACHINE.md),
+[docs/IDEMPOTENCY_AND_RETRIES.md](docs/IDEMPOTENCY_AND_RETRIES.md),
+[docs/WEBHOOK_SECURITY.md](docs/WEBHOOK_SECURITY.md),
+[docs/SCHEDULED_REPORT_EXECUTION.md](docs/SCHEDULED_REPORT_EXECUTION.md),
+[docs/EMAIL_DELIVERY_ARCHITECTURE.md](docs/EMAIL_DELIVERY_ARCHITECTURE.md),
+[docs/INTEGRATION_OBSERVABILITY.md](docs/INTEGRATION_OBSERVABILITY.md),
+[docs/SETMORE_API_FINDINGS.md](docs/SETMORE_API_FINDINGS.md),
+[docs/ACUITY_API_FINDINGS.md](docs/ACUITY_API_FINDINGS.md),
+[docs/PHASE_8_REPORT.md](docs/PHASE_8_REPORT.md)). Observed source-export
 schemas live in [docs/schemas/](docs/schemas/); real business exports stay
 in gitignored `business-inputs/` and are never committed.
 
@@ -132,6 +146,21 @@ carries in-app notifications; `/reports` is the Report Center (quick
 report, saved views, export history). Every number on every dashboard
 comes from the Performance Intelligence Engine (Phase 5) — the UI
 computes nothing.
+
+## Integrations & automation (Phase 8)
+
+`/configuration/integrations` manages provider connections (credentials
+in Supabase Vault, never in tables or the browser); `/integrations` is
+the automation operations dashboard (connection health, sync runs, job
+queue, deliveries, deterministic alerts). Synced data ALWAYS flows
+through the existing import review workflow — auto-approve/auto-post
+are database-constrained off. Setmore and Acuity are BLOCKED pending
+credentials/representative data (see the API findings docs); a
+synthetic test provider verifies the framework. Scheduled reports now
+execute through the background-job worker (`POST /api/worker`, gated by
+`WORKER_SECRET` + a platform-admin session; no production scheduler is
+enabled). Email delivery is provider-neutral with only a TEST channel —
+no real email provider is configured or claimed.
 
 ## Period close (Phase 7)
 

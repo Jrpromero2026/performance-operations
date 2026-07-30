@@ -57,6 +57,16 @@
 | C46 | 2026-07-29 | Scheduled reports are DEFINITIONS only: `execution_enabled` is CHECK-constrained false at the database; recipients must be organization members; every surface states execution is not enabled. No cron/email/webhook infrastructure exists. |
 | C47 | 2026-07-29 | Saved-view sharing: owner-only scope changes; non-personal scopes require `saved_report:share`; one default per scope target (partial unique indexes); default views auto-apply their reporting period only after validating it still exists in the organization. |
 
+| C48 | 2026-07-29 | Integrations provide SOURCE EVIDENCE only: provider → connection → sync → immutable content-addressed payloads → adapter → the EXISTING import pipeline. No sync writes canonical appointments; `auto_approve` and `auto_post` are CHECK-constrained false (enabling either is a future migration-level policy decision). |
+| C49 | 2026-07-29 | Provider credentials live in Supabase Vault (platform-native; no homegrown crypto). App tables store only the Vault id + sha-prefix/last-4 fingerprint + version. Store/rotate return the fingerprint only; retrieval is server-exclusive (service_role, or platform-admin + the Vault-held `worker_server_key` that browsers can never present). Revocation deletes the Vault row and fails closed. |
+| C50 | 2026-07-29 | Setmore API: BLOCKED. Official docs (inspected 2026-07-29) show a limited beta (application-issued refresh token), NO appointment status field, no modified-since, no webhooks, unspecified limits; recurrence identity unverified. No adapter is implemented against unverified shapes; CSV import remains the Setmore path. |
+| C51 | 2026-07-29 | Acuity API: BLOCKED on credentials + representative data. The public contract (HTTP Basic, date-window pagination, canceled-flag, HMAC-SHA256 webhooks) is documented and recorded; implementation waits for verified account data. Generic CSV mapping remains the fallback. |
+| C52 | 2026-07-29 | Background jobs run in Postgres: atomic claim via FOR UPDATE SKIP LOCKED, lease-based crash recovery, exponential backoff with bounded jitter (30s·2ⁿ capped 1h, +0–25%), max attempts → permanently_failed → manual dead-letter/requeue (audited). Claiming is a system action (service_role/platform admin). Dev execution = authenticated `/api/worker` (WORKER_SECRET + platform-admin double gate); NO production scheduler enabled. |
+| C53 | 2026-07-29 | Idempotency is DATABASE-enforced everywhere: job idempotency keys, content-addressed source records, webhook event ids, schedule occurrences (definition+intended_run_at unique), delivery idempotency keys. Cursors advance only after durable persistence. |
+| C54 | 2026-07-29 | Scheduled-report execution enabled per definition (default off) now that the worker is verified; closed periods deliver FROZEN finalized packages (is_final), active periods are labeled NOT FINAL; recipients re-resolve against current members at execution time (deactivated users excluded, external requires org policy, nothing inferred from names). |
+| C55 | 2026-07-29 | Email delivery is provider-neutral with ONLY a test channel; `none_configured` fails closed; delivery states never claim `delivered` without provider confirmation; finalized delivery events are immutable (retries are new events); recipients masked in broad views; subjects carry no amounts. Trainer-statement email is NOT implemented pending explicit org policy. |
+| C56 | 2026-07-29 | Cursor reset is elevated (`integration:reset_cursor`, platform admin), requires a ≥10-char reason and shows the impact (full window re-fetch, hash-dedup prevents duplicates); resets are audited with the prior cursor preserved. |
+
 ## Working Assumptions
 
 | # | Assumption | Revisit when |
@@ -111,3 +121,16 @@ Do not encode assumptions for any of these into calculation logic.
 | U9f | Should compensation-plan/assignment changes be blocked while a period is closed? (Currently unguarded: posted payroll is frozen, but a re-close after reopen would see the new plans.) | Business owners. |
 | U9g | Failed-import disposition workflow: is acknowledging a failed batch at close sufficient, or does a formal disposition process need to exist? | Business owners. |
 | U9h | Scheduled-report delivery expectations (medium, cadence, recipients) once execution infrastructure is built. | Business owners. |
+| U10a | Setmore API access: apply for the beta (Pro account, api@setmore.com) and obtain the refresh token. | Business owners. |
+| U10b | Acuity account credentials (User ID + API key) and representative appointment data. | Business owners. |
+| U10c | Setmore live-payload verification: status representation, recurrence/occurrence identity, cost unit. | Live API access. |
+| U10d | Approved email provider (Resend / Postmark / SES / org SMTP). | Business owners / IT. |
+| U10e | Verified sender domain and address. | Business owners / IT. |
+| U10f | Email retention policy for delivery events and artifacts. | Business owners / compliance. |
+| U10g | External-recipient policy (default OFF; who may enable it, for which report types). | Business owners. |
+| U10h | Trainer-statement email policy (default OFF; explicit consent/authorization model). | Business owners. |
+| U10i | Worker hosting + production scheduler (Supabase scheduled function vs Vercel Cron) and cadence. | Owner / deployment decision. |
+| U10j | Synchronization frequency and date-window policy per provider once one is unblocked. | Business owners. |
+| U10k | Auto-review / auto-approval / auto-post policy for integration batches (all currently hard-off). | Business owners. |
+| U10l | Webhook enablement per provider (Acuity supports; requires public ingestion + service-role context). | Business owners / deployment. |
+| U10m | Retention: job history, dead-letter rows, provider payload evidence, credential-rotation cadence. | Business owners / compliance. |

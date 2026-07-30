@@ -21,17 +21,35 @@ const RUN = Date.now().toString(36);
 const CONN_NAME = `E2E Test Conn ${RUN}`;
 let connectionId = "";
 let batchId = "";
+let syncRunId = "";
 
 async function selectPeriod(page: Page): Promise<void> {
-  await page.waitForLoadState("networkidle");
-  const selector = page.locator("#period-selector");
-  const optionValue = await selector
-    .locator("option", { hasText: "E2E Payroll Window" })
-    .first()
-    .getAttribute("value");
-  expect(optionValue).toBeTruthy();
-  await selector.selectOption(optionValue!);
-  await page.waitForTimeout(2000);
+  // Select, then VERIFY the server accepted the period (retry once) —
+  // under full-suite load the cookie write can lag the first attempt.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await page.waitForLoadState("networkidle");
+    const selector = page.locator("#period-selector");
+    const optionValue = await selector
+      .locator("option", { hasText: "E2E Payroll Window" })
+      .first()
+      .getAttribute("value");
+    expect(optionValue).toBeTruthy();
+    await selector.selectOption(optionValue!);
+    await page.waitForTimeout(2000);
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    const selected = await page.locator("#period-selector").inputValue().catch(() => "");
+    if (selected === optionValue) return;
+  }
+  throw new Error("period selection did not persist");
+}
+
+/** Drain the queue (bounded) so later assertions see only fresh jobs. */
+async function drainWorker(page: Page): Promise<void> {
+  for (let pass = 0; pass < 10; pass++) {
+    const summary = await runWorker(page, 20);
+    if (summary.claimed === 0) return;
+  }
 }
 
 async function runWorker(page: Page, limit = 5) {
@@ -120,6 +138,7 @@ test("4. sync run recorded with cursor + stats; batch requires review", async ({
   // Run detail with statistics and the batch deep link.
   await row.getByRole("link").first().click();
   await page.waitForURL(/\/integrations\/runs\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+  syncRunId = page.url().match(/runs\/([0-9a-f-]{36})/)![1]!;
   await expect(page.locator('[data-run-field="Records accepted (new evidence)"]')).toHaveText("6");
   await expect(page.getByTestId("sync-run-batch")).toContainText("review, approval, and posting");
 
@@ -131,6 +150,22 @@ test("4. sync run recorded with cursor + stats; batch requires review", async ({
   await expect(page.getByText(/needs review|ready for approval/i).first()).toBeVisible({
     timeout: 20_000,
   });
+
+  // Immediately discard the staged batch through the governed control
+  // (evidence preserved): pending e2e batches must never linger — they
+  // would honestly block other org workflows (e.g. period-close
+  // readiness) and any later spec failure would strand them.
+  await page.goto(`/integrations/runs/${syncRunId}`);
+  await page.getByTestId("discard-batch").click();
+  await expect
+    .poll(
+      async () => {
+        await page.goto(`/imports/${batchId}`);
+        return page.getByText(/discarded by an operator/i).count();
+      },
+      { timeout: 60_000 },
+    )
+    .toBeGreaterThan(0);
 });
 
 test("5. re-running the sync is idempotent (no duplicate batch)", async ({ page }) => {
@@ -221,17 +256,26 @@ test("9. scheduled report: enable execution, run now, worker delivers via test c
   await expect(page.getByText(/Execution enabled/).first()).toBeVisible({ timeout: 20_000 });
 
   // Run now, then assert the DURABLE outcome (revalidation can remount
-  // the form and drop the transient toast): a succeeded execution row.
-  await page.getByTestId("run-report-now").first().click();
-  await expect
-    .poll(
-      async () => {
-        await page.reload();
-        return page.locator('[data-scheduled-run-status="succeeded"]').count();
-      },
-      { timeout: 60_000 },
-    )
-    .toBeGreaterThan(0);
+  // the form and drop the transient toast): a succeeded MANUAL run.
+  // Retried once — a dev server under full-suite load can drop the
+  // in-flight action (each attempt is a new occurrence, so this stays
+  // idempotency-safe).
+  let succeeded = 0;
+  for (let attempt = 0; attempt < 2 && succeeded === 0; attempt++) {
+    await page.goto("/reports?tab=scheduled");
+    await page.getByTestId("run-report-now").first().waitFor({ timeout: 20_000 });
+    await page.getByTestId("run-report-now").first().click();
+    const deadline = Date.now() + 60_000;
+    while (Date.now() < deadline && succeeded === 0) {
+      await page.waitForTimeout(3000);
+      await page.reload().catch(() => {});
+      succeeded = await page
+        .locator('[data-scheduled-run-status="succeeded"]')
+        .count()
+        .catch(() => 0);
+    }
+  }
+  expect(succeeded).toBeGreaterThan(0);
   // Active-period honesty labeling.
   await expect(page.getByTestId("scheduled-run-history")).toContainText("not final");
 
@@ -249,22 +293,35 @@ test("10. delivery failure (channel unconfigured) then manual retry succeeds", a
   page,
 }) => {
   test.setTimeout(180_000);
-  // Queue a delivery, then unconfigure the channel BEFORE the worker runs.
+  // Drain accumulated jobs first so the only queued delivery afterwards
+  // is THIS scenario's; then queue a delivery and unconfigure the
+  // channel BEFORE the worker runs.
+  await drainWorker(page);
   await page.goto("/reports?tab=scheduled");
   await selectPeriod(page);
   await page.goto("/reports?tab=scheduled");
   await page.getByTestId("run-report-now").first().waitFor({ timeout: 20_000 });
-  const runsBefore = await page.locator("[data-scheduled-run-status]").count();
+  // The history list is capped, so detect the NEW run by the newest
+  // row's content changing (list is ordered newest-first).
+  const firstRowBefore = await page
+    .locator("[data-scheduled-run-status]")
+    .first()
+    .innerText()
+    .catch(() => "");
   await page.getByTestId("run-report-now").first().click();
   await expect
     .poll(
       async () => {
         await page.reload();
-        return page.locator("[data-scheduled-run-status]").count();
+        return page
+          .locator("[data-scheduled-run-status]")
+          .first()
+          .innerText()
+          .catch(() => "");
       },
       { timeout: 60_000 },
     )
-    .toBeGreaterThan(runsBefore);
+    .not.toBe(firstRowBefore);
 
   await page.goto("/integrations/deliveries");
   await page.locator('select[name="provider"]').selectOption("none_configured");
@@ -279,12 +336,19 @@ test("10. delivery failure (channel unconfigured) then manual retry succeeds", a
     )
     .toBeGreaterThan(0);
 
-  const summary = await runWorker(page);
-  expect(summary.permanentlyFailed).toBeGreaterThan(0);
-
-  await page.reload();
-  const failed = page.locator('[data-delivery-status="failed"]').first();
-  await expect(failed).toBeVisible({ timeout: 20_000 });
+  // The queue may hold jobs from earlier runs; flush in bounded passes
+  // until the delivery for THIS run fails against the unconfigured
+  // channel (asserting the durable event state, not batch counters).
+  await expect
+    .poll(
+      async () => {
+        await runWorker(page, 20);
+        await page.reload();
+        return page.locator('[data-delivery-status="failed"]').count();
+      },
+      { timeout: 90_000 },
+    )
+    .toBeGreaterThan(0);
 
   // Restore the test channel, then retry the failed delivery manually.
   await page.locator('select[name="provider"]').selectOption("test");
@@ -367,10 +431,19 @@ test("13. disable connection; responsive dashboard; cleanup leaves honest state"
   await expect(page.getByTestId("connection-health")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId("job-queue-summary")).toBeVisible();
 
-  // The integration batch remains honestly in review — never auto-posted.
+  // The integration batch stayed in its discarded (failed) state — the
+  // evidence is preserved and nothing was ever posted.
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(`/imports/${batchId}`);
-  await expect(page.getByText(/needs review|ready for approval/i).first()).toBeVisible({
+  await expect(page.getByText(/discarded by an operator/i).first()).toBeVisible({
     timeout: 20_000,
   });
+
+  // Stop this run's schedule from accumulating future worker jobs.
+  await page.goto("/reports?tab=scheduled");
+  await selectPeriod(page);
+  await page.goto("/reports?tab=scheduled");
+  await page.getByTestId("toggle-execution").first().waitFor({ timeout: 20_000 });
+  await page.getByTestId("toggle-execution").first().click();
+  await page.waitForTimeout(1500);
 });

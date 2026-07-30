@@ -105,7 +105,7 @@ the UI reflects the corrected selection.
 
 See `AUTHORIZATION_MODEL.md` for the full model.
 
-## Implemented Domain Layers (Phases 3–7)
+## Implemented Domain Layers (Phases 3–8)
 
 The "future" sections below became reality with dedicated documents:
 
@@ -135,6 +135,19 @@ The "future" sections below became reality with dedicated documents:
   and database guards block material changes in closed periods
   (`reporting_periods.status='closed'` is settable only inside the close
   RPCs).
+- **Integrations & Automation (Phase 8)** — INTEGRATION_ARCHITECTURE.md,
+  INTEGRATION_SECURITY.md, PROVIDER_ADAPTER_CONTRACT.md,
+  BACKGROUND_JOB_ARCHITECTURE.md, JOB_STATE_MACHINE.md,
+  IDEMPOTENCY_AND_RETRIES.md, WEBHOOK_SECURITY.md,
+  SCHEDULED_REPORT_EXECUTION.md, EMAIL_DELIVERY_ARCHITECTURE.md,
+  INTEGRATION_OBSERVABILITY.md, SETMORE_API_FINDINGS.md,
+  ACUITY_API_FINDINGS.md. External systems provide SOURCE EVIDENCE only:
+  provider → connection (Vault credentials) → sync job → immutable
+  payloads → adapter → the EXISTING import pipeline. A background-job
+  system (atomic claim, lease recovery, backoff, dead-letter) executes
+  syncs, scheduled reports, and deliveries; nothing bypasses payroll,
+  close, approval, or audit controls, and no sync can post to the
+  ledger.
 
 ## Original Import Architecture Sketch (superseded by Phase 3 docs)
 

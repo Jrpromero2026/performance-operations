@@ -429,6 +429,64 @@ export async function resetCursor(
   };
 }
 
+/**
+ * Discard a staged INTEGRATION batch that will not be posted (operator
+ * disposal — the U9g gap). Only unposted, unapproved integration batches
+ * qualify; the batch transitions to failed with an explicit code, its
+ * evidence (file + rows + source records) is preserved, and the action
+ * is audited. Manual batches keep their existing workflows.
+ */
+export async function discardIntegrationBatch(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const actor = await getActorContext();
+  if (!actor) return NOT_SIGNED_IN;
+  const batchId = String(formData.get("batch_id") ?? "");
+  const { data: batch } = await actor.supabase
+    .from("import_batches")
+    .select("id, organization_id, status, created_via, original_filename")
+    .eq("id", batchId)
+    .maybeSingle();
+  if (!batch) return { error: "Batch not found." };
+  if (!actorCan(actor, batch.organization_id, "import:manage")) return PERMISSION_DENIED;
+  if (batch.created_via !== "integration") {
+    return { error: "Only integration-created batches can be discarded here." };
+  }
+  if (!["uploaded", "validating", "needs_review", "ready_for_approval"].includes(batch.status)) {
+    return { error: `A ${batch.status} batch cannot be discarded.` };
+  }
+  const { transition } = await import("@/lib/imports/pipeline");
+  // ready_for_approval must step back before failing (state machine).
+  if (batch.status === "ready_for_approval") {
+    await transition(actor, batch.id, batch.organization_id, "needs_review");
+  }
+  if (batch.status === "uploaded") {
+    await transition(actor, batch.id, batch.organization_id, "parsing");
+    await transition(actor, batch.id, batch.organization_id, "failed", "discarded_by_operator");
+  } else {
+    await transition(actor, batch.id, batch.organization_id, "failed", "discarded_by_operator");
+  }
+  await actor.supabase
+    .from("import_batches")
+    .update({
+      failure_code: "discarded_by_operator",
+      sanitized_failure_message:
+        "Discarded by an operator before approval. Evidence is preserved; nothing was posted.",
+    })
+    .eq("id", batch.id);
+  await writeAudit(actor, {
+    organizationId: batch.organization_id,
+    entityType: "import_batch",
+    entityId: batch.id,
+    action: "integration_batch_discarded",
+    metadata: { filename: batch.original_filename, prior_status: batch.status },
+  });
+  revalidatePath("/imports");
+  revalidateIntegrations();
+  return { message: "Batch discarded (evidence preserved; nothing was posted)." };
+}
+
 /* ---------------------------------------------------------- job admin */
 
 async function jobAction(

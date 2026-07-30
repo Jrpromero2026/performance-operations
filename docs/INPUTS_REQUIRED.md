@@ -74,3 +74,38 @@ any sensitive personal data redacted if necessary).
 - Whether revenue counts on the session date or the payment date.
 - How packages and memberships are allocated across sessions/periods.
 - Handling of refunds, comps, and employee-discounted sessions.
+
+## 13. Setmore API Access (Phase 8 — unblocks native sync)
+
+- Confirm the account is on the Pro tier, then apply for API access
+  (api@setmore.com: name, registered account email, use case) and
+  provide the issued refresh token THROUGH THE CREDENTIAL FORM in
+  /configuration/integrations (never by email/file).
+- Once live: sample API payloads for a completed, a cancelled, and a
+  recurring appointment (to verify status representation, occurrence
+  identity, and the cost unit).
+
+## 14. Acuity API Access (Phase 8 — unblocks native sync)
+
+- The account's numeric User ID + API key (Integrations → API),
+  provided through the credential form.
+- Representative appointment data covering completed / cancelled /
+  rescheduled cases; confirmation of the calendar↔trainer and
+  appointment-type↔service mappings.
+
+## 15. Email Delivery Decisions (Phase 8)
+
+- Approved provider (Resend / Postmark / Amazon SES / existing SMTP),
+  sender domain + address, and who completes domain verification.
+- External-recipient policy and trainer-statement email policy (both
+  default OFF until explicitly approved).
+- Retention expectations for delivery records.
+
+## 16. Automation Policies (Phase 8)
+
+- Desired sync frequency and date-window per provider.
+- Whether integration batches may ever auto-approve/auto-post
+  (currently impossible by database constraint — changing this is an
+  explicit policy + migration decision).
+- Worker hosting/scheduler choice for production (documented options in
+  docs/BACKGROUND_JOB_ARCHITECTURE.md).

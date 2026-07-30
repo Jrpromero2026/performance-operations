@@ -6,6 +6,7 @@ import { Widget } from "@/components/widgets/section";
 import { getActorContext } from "@/lib/actions/shared";
 import { hasPermissionInOrganization } from "@/lib/authz/authz";
 import { getWorkspaceContext } from "@/lib/workspace/server";
+import { IntegrationAction } from "../../../configuration/integrations/integration-actions";
 
 export const metadata: Metadata = { title: "Sync run" };
 
@@ -95,6 +96,21 @@ export default async function SyncRunDetailPage({
             — the standard review, approval, and posting workflow applies
             (integrations never post to the ledger directly).
           </p>
+          {hasPermissionInOrganization(
+            context.memberships,
+            run.organization_id,
+            "import:manage",
+          ) && (
+            <div className="mt-3">
+              <IntegrationAction
+                action="discard_batch"
+                label="Discard staged batch (evidence preserved)"
+                pendingLabel="Discarding…"
+                fields={{ batch_id: run.import_batch_id }}
+                testId="discard-batch"
+              />
+            </div>
+          )}
         </Widget>
       )}
     </div>

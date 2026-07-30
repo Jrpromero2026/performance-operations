@@ -96,14 +96,46 @@
   windows, and revenue definitions await business decisions
   (docs/DECISION_LOG.md, docs/INPUTS_REQUIRED.md)
 
-## Phase 8 — Integrations
+## Phase 8 — Integration & Automation Infrastructure ✅ (complete)
 
-- Direct Setmore/Acuity API sync (replacing manual CSV where possible)
+- ✅ Provider-neutral integration framework: typed adapter contract,
+  explicit capabilities, connection lifecycle (DB state machine),
+  Supabase Vault credentials (fingerprint-only, server-exclusive
+  retrieval, rotation + fail-closed revocation)
+- ✅ Sync pipeline into the EXISTING import review workflow: immutable
+  content-addressed source evidence, deterministic evidence CSVs in the
+  same private bucket, cursor-safe pagination, rate-limit handling,
+  schema-drift fail-closed; auto-approve/auto-post DB-constrained OFF
+- ✅ Background jobs: atomic claim (SKIP LOCKED), lease recovery,
+  exponential backoff + jitter, dead-letter, audited manual controls;
+  dev worker endpoint (WORKER_SECRET + platform-admin) — production
+  scheduling documented, NOT enabled
+- ✅ Scheduled-report execution (occurrence-unique, execution-time
+  authorization + recipient re-resolution, frozen close artifacts for
+  closed periods, NOT-FINAL labeling) + provider-neutral email delivery
+  (TEST channel only; honest states; policies default off)
+- ✅ Webhook infrastructure (hashed tokens, signature verification,
+  event-id idempotency, async jobs) for documented providers
+- ✅ Operations dashboard, alerts, job/delivery admin
+- ⛔ Setmore API BLOCKED (limited-beta credentials + status/recurrence
+  gaps — docs/SETMORE_API_FINDINGS.md); Acuity API BLOCKED (no
+  credentials/representative data — docs/ACUITY_API_FINDINGS.md);
+  manual CSV remains the operational path for both
+- ⏳ Real email provider, sender domain, external-recipient and
+  trainer-statement policies, sync cadences, worker hosting: unresolved
+  business decisions (DECISION_LOG U10a–U10m)
+
+## Phase 9 — Provider Activation & Delivery Hardening (candidate)
+
+- Native `setmore-api-v1` / `acuity-api-v1` once credentials and
+  representative data unblock them (verified payloads first)
+- Real email provider + domain verification + bounce ingestion; signed
+  expiring artifact links
+- Production worker hosting (Supabase scheduled function or Vercel
+  Cron) + webhook service-role ingestion
 - Accounting/payroll-provider export formats (column mapping confirmed)
-- Scheduled report delivery (email/webhooks — enables the Phase 7
-  definitions)
 
-## Phase 9 — Production Hardening
+## Phase 10 — Production Hardening
 
 - RLS test suite expansion and security review
 - Performance passes (indexes, query plans, caching of posted aggregates)

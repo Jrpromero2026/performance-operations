@@ -8,6 +8,7 @@ import {
   createConnection,
   createSyncDefinition,
   deadLetterJob,
+  discardIntegrationBatch,
   requeueDeadLetterJob,
   resetCursor,
   retryDelivery,
@@ -36,6 +37,7 @@ const ACTIONS: Record<string, ServerAction> = {
   toggle_execution: toggleReportExecution,
   run_report: runReportNow,
   retry_delivery: retryDelivery,
+  discard_batch: discardIntegrationBatch,
 };
 
 function Feedback({ state }: { state: ActionState }) {
