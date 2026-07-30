@@ -391,28 +391,15 @@ test("13. responsive layout and keyboard navigation", async ({ page }) => {
   await expect(page.getByTestId("analytics-headline")).toBeVisible({ timeout: 20_000 });
   await page.setViewportSize({ width: 1280, height: 800 });
 
-  // Keyboard: tab reaches the scorecard tab links, Enter follows them.
+  // Keyboard: tabbing reaches the scorecard tab links.
   await page.goto("/analytics/scorecards");
   await expect(page.getByTestId("scorecard-tabs")).toBeVisible({ timeout: 20_000 });
-  await page.keyboard.press("Tab");
-  const reached = await page.evaluate(() => {
-    let hops = 0;
-    while (hops < 60) {
-      const active = document.activeElement as HTMLElement | null;
-      if (active?.closest('[data-testid="scorecard-tabs"]')) return true;
-      // jsdom-free tab emulation is unreliable — bail and let the loop below drive
-      break;
-    }
-    return false;
-  });
-  if (!reached) {
-    for (let i = 0; i < 60; i++) {
-      const inTabs = await page.evaluate(
-        () => !!document.activeElement?.closest('[data-testid="scorecard-tabs"]'),
-      );
-      if (inTabs) break;
-      await page.keyboard.press("Tab");
-    }
+  for (let i = 0; i < 60; i++) {
+    const inTabs = await page.evaluate(
+      () => !!document.activeElement?.closest('[data-testid="scorecard-tabs"]'),
+    );
+    if (inTabs) break;
+    await page.keyboard.press("Tab");
   }
   expect(
     await page.evaluate(

@@ -109,3 +109,24 @@ any sensitive personal data redacted if necessary).
   explicit policy + migration decision).
 - Worker hosting/scheduler choice for production (documented options in
   docs/BACKGROUND_JOB_ARCHITECTURE.md).
+
+## 17. Analytics, Goals, and BI Decisions (Phase 9)
+
+- Approved scorecard metric lists (executive / department / trainer) —
+  current defaults are engineering-chosen from the approved catalog.
+- Goal governance: approval policy, ownership conventions, cadences;
+  whether goals ever carry consequences (none are automated today).
+- Benchmark policy: acceptable evidence, approval workflow, and any
+  external references the owners can substantiate.
+- Small-cohort suppression threshold for production (mechanism exists,
+  currently off in dev).
+- Fiscal calendar + official year-to-date definition (currently
+  calendar YTD).
+- Presentation branding assets and preferred chart palette; required
+  board-report sections and order.
+- Trainer ranking/visibility policy (nothing ranked publicly today; no
+  composite trainer score exists).
+- Dashboard sharing defaults per role; external dashboard recipients
+  (currently impossible).
+- Required (vs available) report subscriptions per role once a real
+  email provider is configured.

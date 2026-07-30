@@ -134,9 +134,35 @@ integration docs
 [docs/INTEGRATION_OBSERVABILITY.md](docs/INTEGRATION_OBSERVABILITY.md),
 [docs/SETMORE_API_FINDINGS.md](docs/SETMORE_API_FINDINGS.md),
 [docs/ACUITY_API_FINDINGS.md](docs/ACUITY_API_FINDINGS.md),
-[docs/PHASE_8_REPORT.md](docs/PHASE_8_REPORT.md)). Observed source-export
+[docs/PHASE_8_REPORT.md](docs/PHASE_8_REPORT.md)), and the Phase 9
+analytics docs
+([docs/ANALYTICS_ARCHITECTURE.md](docs/ANALYTICS_ARCHITECTURE.md),
+[docs/ANALYTICS_QUERY_SERVICE.md](docs/ANALYTICS_QUERY_SERVICE.md),
+[docs/MULTI_PERIOD_COMPARISONS.md](docs/MULTI_PERIOD_COMPARISONS.md),
+[docs/SCORECARD_ARCHITECTURE.md](docs/SCORECARD_ARCHITECTURE.md),
+[docs/GOALS_AND_TARGETS.md](docs/GOALS_AND_TARGETS.md),
+[docs/BENCHMARK_FRAMEWORK.md](docs/BENCHMARK_FRAMEWORK.md),
+[docs/COHORT_ANALYSIS.md](docs/COHORT_ANALYSIS.md),
+[docs/CUSTOM_DASHBOARDS.md](docs/CUSTOM_DASHBOARDS.md),
+[docs/CHART_SYSTEM.md](docs/CHART_SYSTEM.md),
+[docs/PRESENTATION_MODE.md](docs/PRESENTATION_MODE.md),
+[docs/ANALYTICS_EXPORTS.md](docs/ANALYTICS_EXPORTS.md),
+[docs/ANALYTICS_SECURITY.md](docs/ANALYTICS_SECURITY.md),
+[docs/PHASE_9_REPORT.md](docs/PHASE_9_REPORT.md)). Observed source-export
 schemas live in [docs/schemas/](docs/schemas/); real business exports stay
 in gitignored `business-inputs/` and are never committed.
+
+## Analytics (Phase 9)
+
+`/analytics` is the business-intelligence layer over the intelligence
+engine: executive analytics with deterministic analytical summaries,
+six default scorecards, governed goals and evidence-backed benchmarks,
+a closed-schema dashboard builder, first-visit client cohorts,
+presentation mode (print/PDF via the browser), analytics report
+packages + scheduled subscriptions, and forecast-ready historical
+dataset exports. Every value is engine output with its health, version,
+and FINAL / NOT FINAL label carried verbatim — the analytics layer
+calculates presentation-only variances, never metrics.
 
 ## Operations Center (Phase 6)
 

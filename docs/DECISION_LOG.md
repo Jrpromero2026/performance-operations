@@ -134,3 +134,39 @@ Do not encode assumptions for any of these into calculation logic.
 | U10k | Auto-review / auto-approval / auto-post policy for integration batches (all currently hard-off). | Business owners. |
 | U10l | Webhook enablement per provider (Acuity supports; requires public ingestion + service-role context). | Business owners / deployment. |
 | U10m | Retention: job history, dead-letter rows, provider payload evidence, credential-rotation cadence. | Business owners / compliance. |
+
+## Phase 9 decisions (2026-07-30)
+
+| # | Decision | Rationale |
+| --- | --- | --- |
+| D9a | Analytics layer composes IntelligenceSession output; the ONLY engine additions are the additive window methods getMetricForWindow / getBreakdownForWindow (same evaluator path as trend buckets, refusing out-of-range windows). | One metric implementation stays the law; multi-period analysis needs sub-window evaluation the engine already performed internally. |
+| D9b | Direction / target / benchmark / percent-change metadata lives in a TS registry (analytics-meta-v1) with full-catalog coverage enforced by unit test — metric definitions untouched. | Presentation metadata must not modify historical metric definitions; a new metric cannot ship without a deliberate direction decision. |
+| D9c | Percentage change requires a strictly positive denominator; rate_bp metrics show absolute basis-point deltas, never percent-of-percent. | The approved deterministic display rules — no misleading percentages. |
+| D9d | Readiness metrics are point-in-time: historical comparison is refused as point_in_time_metric rather than computed. | Comparing current configuration state against a past window would compare current state to itself. |
+| D9e | Goal on-track = current value >= floor(target x elapsed_days / total_days), minimum goals only, before end date. Nothing else may be called on track. | The one deterministic prorated rule; anything more is forecasting (out of scope). |
+| D9f | Goal targets edit only in draft; definitional fields freeze at creation; completed goals immutable (archival only). Baselines are engine-computed, never typed. | Governed history and source-backed baselines. |
+| D9g | No performance_goal_targets / assignments tables: scope columns + single targets cover the approved requirements; cadence-level target schedules wait for a business owner. | Avoid speculative schema. |
+| D9h | Benchmarks freeze at approval (deprecate + recreate to change); internal-historical values computed from healthy engine results with a generated citation; owner evidence mandatory otherwise. | No invented numbers, no silent edits to reference values. |
+| D9i | Default scorecards are code-defined; custom compositions are dashboards. A scorecard_definitions table waits for an owner request. | Configurability without duplicate governance surface. |
+| D9j | Dashboard widget schema is closed (zod strict, re-validated on render); duplicates never inherit sharing; archive instead of delete (packages reference dashboards). | No formula/SQL/script widgets; evidence survives. |
+| D9k | Cohort assignment = engine first-completed-visit month; cells count distinct clients; suppression mechanism built with the threshold left as a business decision (default off in dev). | Reuse the client-history definition; privacy control ready without guessing a number. |
+| D9l | No analytics materializations in Phase 9: measured dev latencies (PHASE_9_REPORT.md) stay interactive; the dataset-loader boundary is where a reconciled materialization would slot in. | Only materialize on evidence. |
+| D9m | Analytics subscriptions generate versioned analytics packages per occurrence with FINAL/NOT FINAL labels; frozen close packages remain the sole financial close artifacts. | Compositions are reproducible (hashed, versioned) without conflating them with close evidence. |
+| D9n | Dataset exports are labeled Forecast-ready historical datasets, embed the no-projected-values note, exclude payroll from trainer datasets, and exclude client-level rows entirely. | Honest labeling and least data. |
+| D9o | The live Playwright suite always runs --workers=1 (run-e2e.mjs): specs share dev-database state and interfere under parallel workers. | Root cause of the baseline flakiness found at Phase 9 startup. |
+
+### Phase 9 unresolved (owner input required — see INPUTS_REQUIRED.md #17)
+
+| # | Open question | Who decides |
+| --- | --- | --- |
+| U11a | Approved metric lists for executive / department / trainer scorecards (current defaults are engineering-chosen from the approved catalog). | Business owners. |
+| U11b | Goal approval policy (who besides workspace admins; second approver?), goal ownership conventions, and measurement cadences actually used. | Business owners. |
+| U11c | Benchmark evidence standards and approval policy; which external references are acceptable. | Business owners. |
+| U11d | Small-cohort suppression threshold for production (mechanism ready, currently off in dev). | Business owners / privacy. |
+| U11e | Fiscal calendar and the official year-to-date definition (currently calendar YTD). | Business owners / accountant. |
+| U11f | Preferred chart palette / presentation branding assets (current: theme tokens + organization name). | Business owners. |
+| U11g | Board-report sections and required order for board_presentation_package. | Business owners. |
+| U11h | Trainer ranking + visibility policy (no public ranking rendered by default; no composite score built). | Business owners. |
+| U11i | Materialization threshold: at what data volume do analytics latencies justify governed materializations? | Owner / measured evidence. |
+| U11j | Dashboard sharing defaults per role and whether external dashboard recipients can ever exist (currently impossible). | Business owners. |
+| U11k | Which report subscriptions are REQUIRED (vs available) per role once a real email provider exists. | Business owners. |

@@ -195,3 +195,14 @@ The "future" sections below became reality with dedicated documents:
   transitions, compensation changes).
 - No UPDATE or DELETE policies exist on `audit_events`; platform admins can
   read all events, workspace users only their organizations' events.
+
+## Phase 9: Analytics Layer
+
+A composition layer (src/lib/analytics) sits between the intelligence
+engine and the /analytics surfaces: one AnalyticsService per request
+(batched engine session, memoized metric requests), explicit comparison
+windows with FINAL/NOT FINAL labeling, code-defined scorecards, governed
+goals and benchmarks (migrations 29-30), a closed-schema dashboard
+builder (migration 31), cohort composition, presentation mode, analytics
+report packages and subscriptions (migration 32), and forecast-ready
+historical dataset exports. Details: docs/ANALYTICS_ARCHITECTURE.md.

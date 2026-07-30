@@ -125,7 +125,23 @@
   trainer-statement policies, sync cadences, worker hosting: unresolved
   business decisions (DECISION_LOG U10a–U10m)
 
-## Phase 9 — Provider Activation & Delivery Hardening (candidate)
+## Phase 9 — Analytics, Scorecards, Goals & Executive BI ✅ (complete)
+
+- Analytics query layer over the intelligence engine (batched sessions,
+  memoized requests, explicit multi-period comparison windows with
+  FINAL / NOT FINAL labeling) — migrations 28–32
+- Default executive/department/trainer/payroll/close/integration
+  scorecards; governed goals (approval lifecycle, immutable history,
+  deterministic progress) and evidence-backed benchmarks
+- Closed-schema custom dashboards with per-viewer rendering, sharing,
+  defaults; first-visit cohort analysis (client counts, suppression
+  mechanism); presentation mode; analytics report packages +
+  scheduled-report subscriptions; forecast-ready historical dataset
+  exports
+- Deliberately excluded (future phases): AI/NL querying, forecasting,
+  anomaly detection, recommendations, composite trainer scores
+
+## Phase 10 — Provider Activation & Delivery Hardening (candidate)
 
 - Native `setmore-api-v1` / `acuity-api-v1` once credentials and
   representative data unblock them (verified payloads first)
@@ -135,7 +151,7 @@
   Cron) + webhook service-role ingestion
 - Accounting/payroll-provider export formats (column mapping confirmed)
 
-## Phase 10 — Production Hardening
+## Phase 11 — Production Hardening
 
 - RLS test suite expansion and security review
 - Performance passes (indexes, query plans, caching of posted aggregates)

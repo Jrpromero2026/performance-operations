@@ -202,3 +202,15 @@ to the authenticated role entirely.
   another organization's data.
 - Nothing is granted implicitly: a new table gets no policies until its
   access model is designed, so it is inaccessible by default.
+
+## Phase 9: Analytics Permissions
+
+Migration 28 adds the analytics capability set (analytics:read/compare/
+export/presentation, analytics_dataset:export, dashboard:create/update/
+share_department/share_organization/set_default, scorecard:manage,
+goal:read/create/update/approve/archive, benchmark:read/create/approve/
+archive, cohort:read). The full matrix, RLS design, and live
+verification results live in docs/ANALYTICS_SECURITY.md. The standing
+principles hold: capabilities not role names, deny by default, entry
+permissions open surfaces while the intelligence engine + RLS decide
+per metric what actually renders.
