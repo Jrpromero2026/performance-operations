@@ -52,6 +52,11 @@ export const NAV_ITEMS: NavItem[] = [
     iconPath: "M13 2 3 14h7l-1 8 10-12h-7l1-8Z",
   },
   {
+    href: "/analytics",
+    label: "Analytics",
+    iconPath: "M3 3v18h18M7 14l4-4 3 3 5-6",
+  },
+  {
     href: "/reports",
     label: "Reports",
     iconPath: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6ZM14 2v6h6M9 15h6M9 11h2",
