@@ -234,17 +234,15 @@ export const testProviderAdapter: ProviderAdapter = {
 
   async fetchAppointments(ctx: FetchContext): Promise<ProviderPage> {
     checkSecret(ctx.secret);
-    if (ctx.secret!.startsWith("fail_rate")) {
-      const page = Number(ctx.cursor ?? "0");
-      if (page === 0) {
-        // First page throttles once, then succeeds on retry — exercises
-        // Retry-After handling without infinite loops.
-        return {
-          records: [],
-          nextCursor: "0",
-          rateLimit: { remaining: 0, resetAt: null, retryAfterSeconds: 1, throttled: true },
-        };
-      }
+    if (ctx.secret!.startsWith("fail_rate") && ctx.cursor === null) {
+      // The very first request throttles once (Retry-After 1s); the retry
+      // with the explicit "0" cursor succeeds — exercises rate-limit
+      // handling without infinite loops (the provider is stateless).
+      return {
+        records: [],
+        nextCursor: "0",
+        rateLimit: { remaining: 0, resetAt: null, retryAfterSeconds: 1, throttled: true },
+      };
     }
     const drift = ctx.secret!.startsWith("fail_drift");
     const config = resolveTestConfig(ctx.config);

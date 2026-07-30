@@ -109,7 +109,7 @@ export class IntegrationFailure extends Error {
 }
 
 const SECRET_PATTERN =
-  /(bearer\s+[\w.-]+|refresh[Tt]oken=[\w-]+|api[_-]?key[=:]\s*[\w-]+|authorization[=:]\s*\S+)/g;
+  /(authorization[=:]\s*(?:bearer\s+)?\S+|bearer\s+[\w.-]+|refreshtoken=[\w-]+|api[_-]?key[=:]\s*[\w-]+)/gi;
 
 /** Strip credential-shaped substrings and bound length. */
 export function sanitizeErrorMessage(message: string): string {

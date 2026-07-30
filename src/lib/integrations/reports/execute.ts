@@ -385,14 +385,32 @@ export async function deliverQueuedEmail(
     return { ok: true, state: event.status, message: "Already processed (idempotent)." };
   }
 
+  // Channel state is re-read at send time (policy may have changed since
+  // queueing). An unconfigured/disabled channel finalizes the event as
+  // failed BEFORE any sending state, so operators see an actionable
+  // failure with a Retry path instead of a stuck "sending" row.
   const { data: channel } = await actor.supabase
     .from("delivery_channels")
     .select("*")
-    .eq("id", event.channel_id ?? "00000000-0000-0000-0000-000000000000")
+    .eq("organization_id", event.organization_id)
+    .eq("channel_type", "email")
     .maybeSingle();
 
   const { resolveDeliveryProvider } = await import("../delivery/email");
-  const provider = resolveDeliveryProvider(channel); // throws when unconfigured
+  let provider;
+  try {
+    provider = resolveDeliveryProvider(channel);
+  } catch (error) {
+    await actor.supabase
+      .from("email_delivery_events")
+      .update({
+        status: "failed",
+        last_error: "delivery_not_configured",
+        finalized_at: new Date().toISOString(),
+      })
+      .eq("id", event.id);
+    throw error;
+  }
 
   await actor.supabase
     .from("email_delivery_events")
