@@ -37,6 +37,11 @@ export const COMMANDS: CommandEntry[] = [
   { id: "page-notifications", group: "Pages", label: "Notifications", href: "/notifications", keywords: "inbox alerts unread", permission: null },
   { id: "page-period-close", group: "Pages", label: "Period close", href: "/period-close", keywords: "close month end finalize manifest", permission: "period_close:read" },
   { id: "action-start-close", group: "Actions", label: "Start period close", href: "/period-close/new", keywords: "close period new finalize", permission: "period_close:create" },
+  { id: "page-automation", group: "Pages", label: "Automation", href: "/integrations", keywords: "integrations sync jobs workers deliveries", permission: "integration:read" },
+  { id: "page-integration-config", group: "Pages", label: "Integration connections", href: "/configuration/integrations", keywords: "providers setmore acuity credentials sync", permission: "integration:read" },
+  { id: "page-job-queue", group: "Pages", label: "Background jobs", href: "/integrations/jobs", keywords: "queue retry dead letter worker", permission: "job:read" },
+  { id: "page-deliveries", group: "Pages", label: "Report deliveries", href: "/integrations/deliveries", keywords: "email delivery channel recipients", permission: "report_delivery:read" },
+  { id: "action-new-connection", group: "Actions", label: "New integration connection", href: "/configuration/integrations/new", keywords: "connect provider api", permission: "integration:create" },
   // Actions
   { id: "action-upload-import", group: "Actions", label: "Upload import file", href: "/imports/new", keywords: "new csv setmore", permission: "import:upload" },
   { id: "action-create-payroll", group: "Actions", label: "Create payroll run", href: "/payroll/new", keywords: "new run prepare", permission: "payroll:create" },

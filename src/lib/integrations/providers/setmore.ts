@@ -20,7 +20,6 @@ import {
   type ConnectionValidation,
   type ProviderAdapter,
   type ProviderCapabilities,
-  type ProviderRecord,
 } from "../shared/contract";
 
 const BLOCKED_REASONS = [
@@ -102,7 +101,7 @@ export const setmoreAdapter: ProviderAdapter = {
   },
 
   evidenceColumns: [],
-  toEvidenceRow(_record: ProviderRecord): Record<string, string> {
+  toEvidenceRow(): Record<string, string> {
     blocked();
   },
   importAdapter,

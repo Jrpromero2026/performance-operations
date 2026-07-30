@@ -15,7 +15,11 @@ import {
   SavedViewRowActions,
   SavedViewSharingControls,
 } from "./saved-view-forms";
-import { NewScheduledReportForm, ScheduledReportRowActions } from "./scheduled-forms";
+import {
+  NewScheduledReportForm,
+  ScheduledExecutionControls,
+  ScheduledReportRowActions,
+} from "./scheduled-forms";
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -219,6 +223,21 @@ export default async function ReportsPage({
           .order("created_at", { ascending: false })
       : { data: null };
 
+  const canExecuteScheduled = hasPermissionInOrganization(
+    context.memberships,
+    organizationId,
+    "scheduled_report:execute",
+  );
+  const { data: scheduledRuns } =
+    tab === "scheduled"
+      ? await actor.supabase
+          .from("scheduled_report_runs")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .order("created_at", { ascending: false })
+          .limit(15)
+      : { data: null };
+
   const { data: exportEvents } =
     tab === "exports"
       ? await actor.supabase
@@ -269,7 +288,7 @@ export default async function ReportsPage({
           </Link>
         ))}
         <span className="ml-2 self-center text-xs text-ink-muted">
-          Scheduled reports: definitions only — execution not yet enabled
+          Scheduled reports execute via the background worker when enabled
         </span>
       </div>
 
@@ -359,13 +378,15 @@ export default async function ReportsPage({
 
       {tab === "scheduled" && (
         <div className="space-y-4" data-testid="report-scheduled">
-          <div className="rounded-[--radius-card] border border-warning/40 bg-warning-soft px-4 py-3 text-sm text-ink">
-            <p className="font-semibold">Execution not yet enabled</p>
+          <div className="rounded-[--radius-card] border border-border bg-surface px-4 py-3 text-sm text-ink shadow-sm">
+            <p className="font-semibold">Execution is available per definition</p>
             <p className="mt-0.5 text-xs text-ink-secondary">
-              These are stored definitions only. No emails are sent and no
-              reports run automatically — there is no scheduler, email, or
-              webhook infrastructure in this system yet. Definitions record
-              intent for when execution is built.
+              The background worker runs enabled schedules when due (one
+              execution per occurrence, database-enforced) and Run now
+              executes immediately. Email delivery uses the organization
+              channel — with no real provider configured it stays in test
+              mode or fails closed; recipients are re-validated against
+              current members at execution time.
             </p>
           </div>
           {canManageScheduled && <NewScheduledReportForm organizationId={organizationId} />}
@@ -398,9 +419,15 @@ export default async function ReportsPage({
                             disabled
                           </span>
                         )}
-                        <span className="rounded bg-warning-soft px-1.5 text-[10px] font-bold uppercase text-warning">
-                          not executing
-                        </span>
+                        {definition.execution_enabled ? (
+                          <span className="rounded bg-positive-soft px-1.5 text-[10px] font-bold uppercase text-positive">
+                            executing
+                          </span>
+                        ) : (
+                          <span className="rounded bg-warning-soft px-1.5 text-[10px] font-bold uppercase text-warning">
+                            execution off
+                          </span>
+                        )}
                       </p>
                       <p className="text-xs text-ink-muted">
                         {definition.timezone} ·{" "}
@@ -410,14 +437,65 @@ export default async function ReportsPage({
                         · created {definition.created_at.slice(0, 10)}
                       </p>
                     </div>
-                    {canManageScheduled && (
-                      <ScheduledReportRowActions id={definition.id} active={definition.active} />
-                    )}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {canExecuteScheduled && (
+                        <ScheduledExecutionControls
+                          id={definition.id}
+                          executionEnabled={definition.execution_enabled}
+                        />
+                      )}
+                      {canManageScheduled && (
+                        <ScheduledReportRowActions id={definition.id} active={definition.active} />
+                      )}
+                    </div>
                   </li>
                 );
               })}
             </ul>
           )}
+          <section className="space-y-2" data-testid="scheduled-run-history">
+            <h2 className="text-sm font-semibold text-ink">Execution history</h2>
+            {(scheduledRuns ?? []).length === 0 ? (
+              <p className="text-sm text-ink-muted">No executions yet.</p>
+            ) : (
+              <ul className="divide-y divide-border rounded-[--radius-card] border border-border bg-surface shadow-sm">
+                {(scheduledRuns ?? []).map((run) => (
+                  <li
+                    key={run.id}
+                    className="flex items-center justify-between px-4 py-2.5 text-sm"
+                    data-scheduled-run-status={run.status}
+                  >
+                    <span className="text-xs text-ink-secondary">
+                      {run.intended_run_at.slice(0, 16).replace("T", " ")} · {run.trigger_source}
+                      {run.is_final ? (
+                        <span className="ml-2 rounded bg-positive-soft px-1.5 text-[10px] font-bold uppercase text-positive">
+                          final
+                        </span>
+                      ) : (
+                        <span className="ml-2 rounded bg-surface-sunken px-1.5 text-[10px] font-bold uppercase text-ink-muted">
+                          not final
+                        </span>
+                      )}
+                      {run.failure_code && (
+                        <span className="ml-2 text-negative">{run.failure_code}</span>
+                      )}
+                    </span>
+                    <span
+                      className={`text-xs font-semibold ${
+                        run.status === "succeeded"
+                          ? "text-positive"
+                          : run.status === "failed"
+                            ? "text-negative"
+                            : "text-ink"
+                      }`}
+                    >
+                      {run.status}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
       )}
 

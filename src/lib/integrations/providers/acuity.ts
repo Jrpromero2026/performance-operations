@@ -23,7 +23,6 @@ import {
   type ConnectionValidation,
   type ProviderAdapter,
   type ProviderCapabilities,
-  type ProviderRecord,
   type WebhookVerification,
 } from "../shared/contract";
 
@@ -126,7 +125,7 @@ export const acuityAdapter: ProviderAdapter = {
   },
 
   evidenceColumns: [],
-  toEvidenceRow(_record: ProviderRecord): Record<string, string> {
+  toEvidenceRow(): Record<string, string> {
     blocked();
   },
   importAdapter,

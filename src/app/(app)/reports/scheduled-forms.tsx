@@ -6,6 +6,7 @@ import {
   deleteScheduledReport,
   toggleScheduledReport,
 } from "@/lib/actions/report-admin";
+import { runReportNow, toggleReportExecution } from "@/lib/actions/integrations";
 import type { ActionState } from "@/lib/actions/shared";
 
 const inputClass =
@@ -83,6 +84,58 @@ export function NewScheduledReportForm({ organizationId }: { organizationId: str
         {state.message && <span role="status" className="text-xs text-positive">{state.message}</span>}
       </div>
     </form>
+  );
+}
+
+/** Phase 8: execution toggle + manual run (scheduled_report:execute). */
+export function ScheduledExecutionControls({
+  id,
+  executionEnabled,
+}: {
+  id: string;
+  executionEnabled: boolean;
+}) {
+  const [toggleState, toggleAction, togglePending] = useActionState<ActionState, FormData>(
+    toggleReportExecution,
+    {},
+  );
+  const [runState, runAction, runPending] = useActionState<ActionState, FormData>(
+    runReportNow,
+    {},
+  );
+  const buttonClass =
+    "h-7 rounded-[--radius-control] border border-border px-2 text-[11px] font-medium text-ink hover:bg-surface-sunken disabled:opacity-60";
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <form action={toggleAction}>
+        <input type="hidden" name="definition_id" value={id} />
+        <input type="hidden" name="enable" value={String(!executionEnabled)} />
+        <button type="submit" disabled={togglePending} className={buttonClass} data-testid="toggle-execution">
+          {executionEnabled ? "Disable execution" : "Enable execution"}
+        </button>
+      </form>
+      <form action={runAction}>
+        <input type="hidden" name="definition_id" value={id} />
+        <button
+          type="submit"
+          disabled={runPending}
+          className="h-7 rounded-[--radius-control] bg-accent px-2.5 text-[11px] font-semibold text-white disabled:opacity-60"
+          data-testid="run-report-now"
+        >
+          {runPending ? "Running…" : "Run now"}
+        </button>
+      </form>
+      {(toggleState.error || runState.error) && (
+        <span role="alert" className="text-xs text-negative">
+          {toggleState.error || runState.error}
+        </span>
+      )}
+      {(toggleState.message || runState.message) && (
+        <span role="status" className="text-xs text-positive">
+          {toggleState.message || runState.message}
+        </span>
+      )}
+    </div>
   );
 }
 
