@@ -1,6 +1,6 @@
 /** Shared import-domain types (pure; no I/O). */
 
-export type ImportSource = "setmore" | "acuity" | "manual_csv";
+export type ImportSource = "setmore" | "acuity" | "manual_csv" | "integration_test";
 
 export type IssueSeverity = "blocking" | "warning" | "info";
 

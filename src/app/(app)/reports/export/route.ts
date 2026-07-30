@@ -3,34 +3,13 @@ import { getActorContext } from "@/lib/actions/shared";
 import { hasPermissionInOrganization } from "@/lib/authz/authz";
 import { getWorkspaceContext } from "@/lib/workspace/server";
 import { getPeriodContext } from "@/lib/period/server";
-import { IntelligenceSession } from "@/lib/intelligence/service";
-import { formatMetricValue } from "@/lib/intelligence/format";
-
-const REPORT_METRICS = [
-  "appointments_completed",
-  "completed_rate_bp",
-  "cancellation_rate_bp",
-  "no_show_rate_bp",
-  "coaching_minutes",
-  "schedule_utilization_bp",
-  "revenue_listed_cents",
-  "revenue_per_session_cents",
-  "revenue_per_hour_cents",
-  "payroll_gross_cents",
-  "payroll_pct_of_revenue_bp",
-  "active_clients",
-  "new_clients",
-  "client_retention_rate_bp",
-];
-
-function csvCell(value: string | number | null): string {
-  const text = value === null ? "" : String(value);
-  return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-}
+import { buildMetricReportCsv } from "@/lib/reports/metric-report";
 
 /**
- * Report CSV export — serializes engine MetricResults verbatim (raw value +
- * formatted value + health + version). Records an export_events row.
+ * Report CSV export — serializes engine MetricResults verbatim through
+ * the SHARED metric-report builder (also used by scheduled execution, so
+ * interactive and scheduled artifacts are byte-identical for identical
+ * inputs). Records an export_events row.
  */
 export async function GET() {
   const actor = await getActorContext();
@@ -51,40 +30,13 @@ export async function GET() {
   if (!selected) {
     return NextResponse.json({ error: "no_period_selected" }, { status: 400 });
   }
-  const period = {
+
+  const report = await buildMetricReportCsv(actor, organizationId, {
     id: selected.id,
     label: selected.label,
     start_date: selected.startDate,
     end_date: selected.endDate,
-  };
-
-  const session = await IntelligenceSession.create(
-    actor,
-    organizationId,
-    period.start_date,
-    period.end_date,
-  );
-  const results = session.getMetrics(REPORT_METRICS);
-
-  const lines = [
-    ["Performance Operations — Metric Report"].map(csvCell).join(","),
-    ["Period", period.label, `${period.start_date} – ${period.end_date}`].map(csvCell).join(","),
-    ["Engine", "intel-v1"].map(csvCell).join(","),
-    "",
-    ["Metric", "Value (raw)", "Value (formatted)", "Unit", "Health", "Notes"].map(csvCell).join(","),
-    ...results.map((r) =>
-      [
-        r.metricId,
-        r.value,
-        formatMetricValue(r.value, r.unit),
-        r.unit,
-        r.health,
-        r.reasons[0] ?? r.warnings[0] ?? "",
-      ]
-        .map(csvCell)
-        .join(","),
-    ),
-  ];
+  });
 
   await actor.supabase.from("export_events").insert({
     organization_id: organizationId,
@@ -92,14 +44,14 @@ export async function GET() {
     source_page: "reports",
     format: "csv",
     engine_version: "intel-v1",
-    metadata: { period_id: period.id, metric_count: results.length },
+    metadata: { period_id: selected.id, metric_count: report.metricCount },
     generated_by: actor.userId,
   });
 
-  return new NextResponse(lines.join("\r\n") + "\r\n", {
+  return new NextResponse(report.content, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="metric-report-${period.start_date}.csv"`,
+      "Content-Disposition": `attachment; filename="${report.fileName}"`,
       "Cache-Control": "no-store",
     },
   });

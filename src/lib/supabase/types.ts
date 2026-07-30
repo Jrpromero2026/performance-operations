@@ -2090,7 +2090,10 @@ export type Database = {
         Insert: {
           connection_id: string; definition_id: string;
           organization_id: string; data_type: string;
-        } & Partial<{ id: string; cursor_value: string | null }>;
+        } & Partial<{
+          id: string; cursor_value: string | null;
+          previous_value: string | null; advanced_at: string | null;
+        }>;
         Update: Partial<{
           cursor_value: string | null; previous_value: string | null;
           advanced_at: string | null; reset_by: string | null;
@@ -2143,6 +2146,7 @@ export type Database = {
           id: string; connection_id: string | null; job_id: string | null;
           retryable: boolean; message: string; recommended_action: string;
           correlation_id: string | null; attempt_count: number;
+          last_seen_at: string; resolved: boolean; resolved_at: string | null;
         }>;
         Update: Partial<{
           job_id: string | null; retryable: boolean; message: string;
@@ -2330,6 +2334,10 @@ export type Database = {
       void_period_close: {
         Args: { p_run_id: string; p_reason: string };
         Returns: undefined;
+      };
+      get_connection_secret_with_key: {
+        Args: { p_connection_id: string; p_server_key: string };
+        Returns: string;
       };
       store_connection_secret: {
         Args: { p_connection_id: string; p_secret: string };
