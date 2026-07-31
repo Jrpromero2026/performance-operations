@@ -39,10 +39,36 @@ preview cannot activate while any Supabase variable is set.
 
 (These were set via the authenticated Vercel CLI during the hosted
 deployment; the list is the manual fallback and the audit record of
-exactly which variables exist. All four are stored as Vercel
-*Sensitive* variables, which are write-only — they cannot be read back
-from the dashboard. Rotation is `vercel env rm <NAME> production`
-followed by `vercel env add <NAME> production`.)
+exactly which variables exist.)
+
+## Sensitivity matters — the three public variables must be non-sensitive
+
+Vercel *Sensitive* environment variables are exposed at runtime but
+**not at build time**. This application resolves its Supabase
+configuration during module initialisation (`src/lib/env.ts` evaluates
+`readEnv()` at import), so a Sensitive `NEXT_PUBLIC_SUPABASE_URL` makes
+the built application believe Supabase is not configured. The deployment
+still serves pages and still protects routes — it just runs entirely in
+its degraded "not configured" mode, and nobody can log in.
+
+That failure occurred during this deployment and was fixed by re-adding
+the three `NEXT_PUBLIC_*` variables with `--no-sensitive`. They are
+browser-safe by design: the project URL and publishable key are public
+values, and RLS is the enforcement layer.
+
+`WORKER_SECRET` stays **Sensitive**. It is server-only, read at runtime,
+and therefore write-only in the dashboard — it cannot be read back.
+Rotation is `vercel env rm WORKER_SECRET production` followed by
+`vercel env add WORKER_SECRET production`.
+
+Current state:
+
+| Variable | Vercel type |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Non-sensitive (required — needed at build) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Non-sensitive (required — needed at build) |
+| `NEXT_PUBLIC_APP_URL` | Non-sensitive |
+| `WORKER_SECRET` | Sensitive (server-only, runtime) |
 
 ## Worker key posture (deliberate)
 
