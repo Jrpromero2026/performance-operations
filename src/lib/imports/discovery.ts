@@ -134,6 +134,19 @@ export interface DiscoveryInput {
   mappings?: ColumnMappings;
 }
 
+/** The part of a report derived purely from normalized rows. */
+export interface RowAggregate {
+  unusableRows: number;
+  dateRange: { from: string; to: string } | null;
+  timezones: string[];
+  trainers: DiscoveredTrainer[];
+  services: DiscoveredService[];
+  aliasClusters: AliasCluster[];
+  statuses: DiscoveredStatus[];
+  duplicateCandidates: number;
+  totals: DiscoveryReport["totals"];
+}
+
 /** Tokens that describe session length or packaging, not the service itself. */
 const DURATION_TOKEN = /^(\d{1,3}(min|mins|minute|minutes|hr|hour|hours)?|min|mins|minute|minutes|hr|hrs|hour|hours)$/;
 const FILLER_TOKENS = new Set(["session", "sessions", "appointment", "appointments", "the", "a", "and", "with", "for"]);
@@ -212,30 +225,18 @@ function bump(map: Map<string, Accumulator>, rawName: string, email?: string): v
 }
 
 /**
- * Analyze an export without importing it.
+ * Aggregate normalized rows into discovery lists.
  *
- * Pure with respect to the database: the caller supplies existing
- * trainers and services, and receives a report. No batch is created, no
- * row is staged, nothing is written.
+ * Shared by both entry points so the wizard never computes the same
+ * thing twice: `discoverFromCsv` feeds it rows it just parsed, and
+ * `discoverFromNormalizedRows` feeds it rows the import pipeline already
+ * staged and persisted.
  */
-export function discoverFromCsv(input: DiscoveryInput): DiscoveryReport {
-  const { csvText, organizationTimezone, trainers, services } = input;
-
-  const parsed = parseCsv(csvText, { maxRows: MAX_IMPORT_ROWS });
-  const headers = parsed.headers.map((h) => h.trim());
-  const detection = detectAdapter(headers);
-
-  const suggestedMappings = input.mappings ?? suggestColumnMappings(headers);
-  let adapter: SourceAdapter | null = detection.adapter;
-  let requiresColumnMapping = false;
-  if (!adapter) {
-    // No registered adapter recognised these headers. Fall back to the
-    // shipped mapping-driven adapter using the confirmed or proposed
-    // mapping, and tell the caller the mapping needs confirmation.
-    adapter = createGenericAdapter(suggestedMappings);
-    requiresColumnMapping = input.mappings === undefined;
-  }
-
+export function aggregateRows(
+  rows: NormalizedRow[],
+  trainers: TrainerLookup[],
+  services: ServiceLookup[]
+): RowAggregate {
   const trainerMap = new Map<string, Accumulator>();
   const serviceMap = new Map<string, Accumulator>();
   const statusCounts = new Map<string, number>();
@@ -247,12 +248,7 @@ export function discoverFromCsv(input: DiscoveryInput): DiscoveryReport {
   let minDate: string | null = null;
   let maxDate: string | null = null;
 
-  for (const row of parsed.rows) {
-    const record = rowToObject(parsed.headers, row);
-    const { normalized } = adapter.normalizeRow(record, {
-      organizationTimezone,
-    });
-
+  for (const normalized of rows) {
     const hasContent =
       normalized.sourceTrainerName ||
       normalized.sourceServiceName ||
@@ -301,21 +297,7 @@ export function discoverFromCsv(input: DiscoveryInput): DiscoveryReport {
     .sort((a, b) => b.appointmentCount - a.appointmentCount || a.sourceName.localeCompare(b.sourceName));
 
   return {
-    rowCount: parsed.rows.length,
     unusableRows,
-    parseIssues: parsed.issues,
-    headers,
-    sensitiveColumns: detectSensitiveColumns(headers),
-    adapter: detection.adapter
-      ? {
-          source: detection.adapter.source,
-          version: detection.adapter.version,
-          displayName: detection.adapter.displayName,
-          confidence: detection.confidence,
-        }
-      : null,
-    requiresColumnMapping,
-    suggestedMappings,
     dateRange: minDate && maxDate ? { from: minDate, to: maxDate } : null,
     timezones: [...timezones].sort(),
     trainers: discoveredTrainers,
@@ -332,6 +314,73 @@ export function discoverFromCsv(input: DiscoveryInput): DiscoveryReport {
       servicesNew: discoveredServices.filter((s) => s.existingId === null).length,
     },
   };
+}
+
+/**
+ * Analyze an export without importing it.
+ *
+ * Pure with respect to the database: the caller supplies existing
+ * trainers and services, and receives a report. No batch is created, no
+ * row is staged, nothing is written.
+ */
+export function discoverFromCsv(input: DiscoveryInput): DiscoveryReport {
+  const { csvText, organizationTimezone, trainers, services } = input;
+
+  const parsed = parseCsv(csvText, { maxRows: MAX_IMPORT_ROWS });
+  const headers = parsed.headers.map((h) => h.trim());
+  const detection = detectAdapter(headers);
+
+  const suggestedMappings = input.mappings ?? suggestColumnMappings(headers);
+  let adapter: SourceAdapter | null = detection.adapter;
+  let requiresColumnMapping = false;
+  if (!adapter) {
+    // No registered adapter recognised these headers. Fall back to the
+    // shipped mapping-driven adapter using the confirmed or proposed
+    // mapping, and tell the caller the mapping needs confirmation.
+    adapter = createGenericAdapter(suggestedMappings);
+    requiresColumnMapping = input.mappings === undefined;
+  }
+
+  const normalizedRows = parsed.rows.map(
+    (row) =>
+      adapter.normalizeRow(rowToObject(parsed.headers, row), {
+        organizationTimezone,
+      }).normalized
+  );
+
+  return {
+    rowCount: parsed.rows.length,
+    parseIssues: parsed.issues,
+    headers,
+    sensitiveColumns: detectSensitiveColumns(headers),
+    adapter: detection.adapter
+      ? {
+          source: detection.adapter.source,
+          version: detection.adapter.version,
+          displayName: detection.adapter.displayName,
+          confidence: detection.confidence,
+        }
+      : null,
+    requiresColumnMapping,
+    suggestedMappings,
+    ...aggregateRows(normalizedRows, trainers, services),
+  };
+}
+
+/**
+ * Discovery over rows the import pipeline already staged.
+ *
+ * The wizard's trainer and service steps use this: `import_rows`
+ * persists `normalized_row` at staging time, so the review screens read
+ * what the pipeline already computed rather than re-downloading and
+ * re-parsing the original file on every page render.
+ */
+export function discoverFromNormalizedRows(
+  rows: NormalizedRow[],
+  trainers: TrainerLookup[],
+  services: ServiceLookup[]
+): RowAggregate {
+  return aggregateRows(rows, trainers, services);
 }
 
 function resolveTrainer(entry: Accumulator, trainers: TrainerLookup[]): DiscoveredTrainer {
