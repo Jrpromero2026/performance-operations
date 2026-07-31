@@ -16,12 +16,19 @@ export interface OrgConfigStats {
   openPeriods: number;
   compensationPlans: number;
   publishedVersions: number;
+  /** Scheduling exports uploaded (any state), and those posted. */
+  importBatches: number;
+  postedImportBatches: number;
+  /** Payroll runs that reached at least review — proof payroll was exercised. */
+  validatedPayrollRuns: number;
 }
 
 export interface ReadinessItem {
   label: string;
   done: boolean;
   detail?: string;
+  /** Setup-wizard step that satisfies this item, when one owns it. */
+  wizardStep?: number;
 }
 
 export async function getConfigStats(
@@ -43,6 +50,8 @@ export async function getConfigStats(
     plans,
     versions,
     adminRoles,
+    batches,
+    payrollRuns,
   ] = await Promise.all([
     actor.supabase
       .from("departments")
@@ -93,6 +102,14 @@ export async function getConfigStats(
       .in("organization_id", orgIds)
       .eq("status", "published"),
     actor.supabase.from("roles").select("id, key"),
+    actor.supabase
+      .from("import_batches")
+      .select("organization_id, status")
+      .in("organization_id", orgIds),
+    actor.supabase
+      .from("payroll_runs")
+      .select("organization_id, status")
+      .in("organization_id", orgIds),
   ]);
 
   const adminRoleIds = new Set(
@@ -123,6 +140,19 @@ export async function getConfigStats(
     const orgPeriods = (periods.data ?? []).filter(
       (p) => p.organization_id === org.id
     );
+    const orgBatches = (batches.data ?? []).filter(
+      (b) => b.organization_id === org.id
+    );
+    // "Validated" means the run got far enough to produce reviewable
+    // numbers. Draft and failed runs prove nothing.
+    const validatedRunStates = new Set([
+      "needs_review",
+      "ready_for_approval",
+      "approved",
+      "posted",
+      "locked",
+      "reopened",
+    ]);
 
     return {
       organizationId: org.id,
@@ -154,60 +184,102 @@ export async function getConfigStats(
       publishedVersions: (versions.data ?? []).filter(
         (v) => v.organization_id === org.id
       ).length,
+      importBatches: orgBatches.length,
+      postedImportBatches: orgBatches.filter((b) => b.status === "posted").length,
+      validatedPayrollRuns: (payrollRuns.data ?? []).filter(
+        (r) => r.organization_id === org.id && validatedRunStates.has(r.status)
+      ).length,
     };
   });
 }
 
-/** Setup-readiness checklist. Payroll-ready ONLY when every item passes. */
+/**
+ * Setup-readiness checklist, in the owner's language and in the order the
+ * setup wizard walks. Payroll-ready ONLY when every item passes.
+ *
+ * The evaluation rules are unchanged from the configuration-object
+ * version that preceded it — same tables, same thresholds. What changed
+ * is the vocabulary ("Trainers reviewed" rather than "Trainers
+ * configured") and one substantive fix: the old list carried a
+ * permanently-false "Scheduling export sample received" item, so no
+ * organization could ever reach 100%. That is now a real check against
+ * uploaded batches.
+ *
+ * `wizardStep` ties each item to the wizard step that satisfies it, so
+ * the progress bar and this checklist can never disagree. Items with no
+ * step are prerequisites the wizard does not own.
+ */
 export function readinessChecklist(stats: OrgConfigStats): ReadinessItem[] {
   return [
-    { label: "Organization exists", done: true },
+    { label: "Organization created", done: true, wizardStep: 1 },
     {
-      label: "Departments configured",
-      done: stats.departments > 0,
-      detail: `${stats.departments}`,
-    },
-    {
-      label: "At least one admin assigned",
-      done: stats.admins > 0,
-      detail: `${stats.admins}`,
-    },
-    {
-      label: "Trainers configured",
-      done: stats.activeTrainers > 0,
-      detail: `${stats.activeTrainers}`,
-    },
-    {
-      label: "Services configured",
-      done: stats.activeServices > 0,
-      detail: `${stats.activeServices}`,
-    },
-    {
-      label: "Service aliases mapped",
-      done: stats.activeServices > 0 && stats.servicesWithAliases === stats.activeServices,
-      detail: `${stats.servicesWithAliases}/${stats.activeServices}`,
-    },
-    {
-      label: "Reporting period configured",
+      label: "Reporting periods set up",
       done: stats.reportingPeriods > 0,
       detail: `${stats.reportingPeriods}`,
+      wizardStep: 1,
+    },
+    {
+      label: "Scheduling file uploaded",
+      done: stats.importBatches > 0,
+      detail: stats.importBatches > 0 ? `${stats.importBatches}` : "none yet",
+      wizardStep: 2,
+    },
+    {
+      label: "Trainers reviewed",
+      done: stats.activeTrainers > 0,
+      detail: `${stats.activeTrainers}`,
+      wizardStep: 3,
+    },
+    {
+      label: "Services reviewed",
+      done: stats.activeServices > 0,
+      detail: `${stats.activeServices}`,
+      wizardStep: 4,
+    },
+    {
+      label: "Service names matched to your schedule",
+      done: stats.activeServices > 0 && stats.servicesWithAliases === stats.activeServices,
+      detail: `${stats.servicesWithAliases}/${stats.activeServices}`,
+      wizardStep: 4,
     },
     {
       label: "Compensation plans published",
       done: stats.publishedVersions > 0,
       detail: `${stats.publishedVersions}`,
+      wizardStep: 5,
     },
     {
-      label: "Trainer compensation assignments complete",
+      label: "Trainer plans assigned",
       done:
         stats.activeTrainers > 0 &&
         stats.trainersWithCompensation === stats.activeTrainers,
       detail: `${stats.trainersWithCompensation}/${stats.activeTrainers}`,
+      wizardStep: 5,
     },
     {
-      label: "Scheduling export sample received",
-      done: false,
-      detail: "awaiting business input",
+      label: "Payroll validated",
+      done: stats.validatedPayrollRuns > 0,
+      detail: stats.validatedPayrollRuns > 0 ? `${stats.validatedPayrollRuns}` : "not yet run",
+      wizardStep: 6,
+    },
+    {
+      label: "Someone can administer this workspace",
+      done: stats.admins > 0,
+      detail: `${stats.admins}`,
     },
   ];
+}
+
+/** True when every readiness item passes — the wizard's "Ready" state. */
+export function isSetupComplete(stats: OrgConfigStats): boolean {
+  return readinessChecklist(stats).every((item) => item.done);
+}
+
+/** The first wizard step with unfinished work, or null when complete. */
+export function nextIncompleteStep(stats: OrgConfigStats): number | null {
+  const pending = readinessChecklist(stats)
+    .filter((item) => !item.done && item.wizardStep !== undefined)
+    .map((item) => item.wizardStep as number)
+    .sort((a, b) => a - b);
+  return pending[0] ?? null;
 }
