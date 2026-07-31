@@ -47,6 +47,3 @@ next-env.d.ts
 
 # Business input files (real exports; may contain client PII) — never commit
 /business-inputs/
-
-# Vercel CLI project link (machine-local)
-.vercel
