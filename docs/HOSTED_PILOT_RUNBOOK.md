@@ -143,6 +143,35 @@ There is no organization-creation UI, but member invitation works:
 creation — copy it then, because only its hash is stored. Email delivery
 is test-mode in the pilot, so the link must be delivered by hand.
 
+## Project and cost arrangement
+
+Two Supabase projects exist, deliberately, and only one is paid:
+
+| Project | Organization | Plan | Purpose |
+| --- | --- | --- | --- |
+| `performance-operations-pilot` | `JRSTRENGTHANDFITNESS` | Pro (~$10/mo compute) | Backs the hosted app. Real data. Automated backups. Never auto-pauses. |
+| `performance-operations-dev` | a separate **Free** organization | Free ($0) | Test fixtures only. Target for the 82 live end-to-end tests. |
+
+Supabase bills per project and does not allow mixing free and paid
+projects in one organization, so the development project lives in its own
+Free-plan organization. At 25 MB of database and under 100 KB of storage
+it sits well inside the free 500 MB / 1 GB limits.
+
+Two consequences to remember:
+
+- **The dev project auto-pauses after about 7 days of inactivity.**
+  Before running the live e2e suite, resume it from the dashboard and
+  wait for it to come back up. This is harmless — it is the mechanism
+  that makes it free.
+- **A paused project is restorable for 90 days.** If dev sits untouched
+  longer than that, treat it as gone. That is acceptable: it holds
+  nothing irreplaceable and can be rebuilt from the migrations plus
+  `seed.sql` plus the fixture seeds.
+
+Never transfer the **pilot** project to a free organization. It holds
+real business data, needs automated backups, and must not auto-pause
+while it is serving the hosted app.
+
 ## Boundaries of this environment
 
 - **Not production.** No backup policy has been established beyond
