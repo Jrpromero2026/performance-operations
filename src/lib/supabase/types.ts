@@ -18,7 +18,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -1726,6 +1726,33 @@ export type Database = {
           },
         ]
       }
+      external_data_sources: {
+        Row: {
+          created_at: string
+          description: string | null
+          ingest_mode: string
+          key: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          ingest_mode: string
+          key: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          ingest_mode?: string
+          key?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       import_batch_events: {
         Row: {
           actor_id: string | null
@@ -3401,6 +3428,192 @@ export type Database = {
             columns: ["role_id"]
             isOneToOne: false
             referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizational_metric_definitions: {
+        Row: {
+          created_at: string
+          definition: string
+          is_active: boolean
+          key: string
+          label: string
+          rationale: string
+          sort_order: number
+          source_key: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          definition: string
+          is_active?: boolean
+          key: string
+          label: string
+          rationale: string
+          sort_order?: number
+          source_key: string
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          definition?: string
+          is_active?: boolean
+          key?: string
+          label?: string
+          rationale?: string
+          sort_order?: number
+          source_key?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizational_metric_definitions_source_key_fkey"
+            columns: ["source_key"]
+            isOneToOne: false
+            referencedRelation: "external_data_sources"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      organizational_snapshot_values: {
+        Row: {
+          created_at: string
+          id: string
+          metric_key: string
+          organization_id: string
+          snapshot_id: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metric_key: string
+          organization_id: string
+          snapshot_id: string
+          value: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metric_key?: string
+          organization_id?: string
+          snapshot_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizational_snapshot_values_metric_key_fkey"
+            columns: ["metric_key"]
+            isOneToOne: false
+            referencedRelation: "organizational_metric_definitions"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "organizational_snapshot_values_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizational_snapshot_values_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "organizational_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizational_snapshots: {
+        Row: {
+          as_of_date: string
+          created_at: string
+          entered_at: string
+          entered_by: string
+          id: string
+          note: string | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          reporting_period_id: string | null
+          source_key: string
+          status: string
+          superseded_by_id: string | null
+          updated_at: string
+          void_reason: string | null
+        }
+        Insert: {
+          as_of_date: string
+          created_at?: string
+          entered_at?: string
+          entered_by: string
+          id?: string
+          note?: string | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          reporting_period_id?: string | null
+          source_key: string
+          status?: string
+          superseded_by_id?: string | null
+          updated_at?: string
+          void_reason?: string | null
+        }
+        Update: {
+          as_of_date?: string
+          created_at?: string
+          entered_at?: string
+          entered_by?: string
+          id?: string
+          note?: string | null
+          organization_id?: string
+          period_end?: string
+          period_start?: string
+          reporting_period_id?: string | null
+          source_key?: string
+          status?: string
+          superseded_by_id?: string | null
+          updated_at?: string
+          void_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizational_snapshots_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizational_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizational_snapshots_reporting_period_id_fkey"
+            columns: ["reporting_period_id"]
+            isOneToOne: false
+            referencedRelation: "reporting_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizational_snapshots_source_key_fkey"
+            columns: ["source_key"]
+            isOneToOne: false
+            referencedRelation: "external_data_sources"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "organizational_snapshots_superseded_by_id_fkey"
+            columns: ["superseded_by_id"]
+            isOneToOne: false
+            referencedRelation: "organizational_snapshots"
             referencedColumns: ["id"]
           },
         ]
@@ -6319,6 +6532,10 @@ export type Database = {
         Args: { p_connection_id: string; p_secret: string }
         Returns: Json
       }
+      supersede_organizational_snapshot: {
+        Args: { p_new_snapshot_id: string; p_old_snapshot_id: string }
+        Returns: undefined
+      }
       supersede_payroll_run: {
         Args: { p_reason: string; p_run_id: string }
         Returns: string
@@ -6340,6 +6557,7 @@ export type Database = {
     }
   }
 }
+
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
 

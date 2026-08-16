@@ -44,22 +44,66 @@ describe("blocked adapters fail closed", () => {
     },
   );
 
-  it.each(["setmore_api", "acuity_api"] as const)(
-    "%s throws ProviderBlockedError from record handling",
-    (key) => {
-      const adapter = getProviderAdapter(key)!;
-      expect(() =>
-        adapter.normalizeSourceRecord(
-          { externalId: "x", sourceUpdatedAt: null, payload: {} },
-          { organizationTimezone: "America/Los_Angeles" },
-        ),
-      ).toThrow(ProviderBlockedError);
-      expect(() => adapter.toEvidenceRow({ externalId: "x", sourceUpdatedAt: null, payload: {} })).toThrow(
-        ProviderBlockedError,
-      );
-      expect(adapter.fetchAppointments).toBeUndefined();
-    },
-  );
+  it("acuity_api throws ProviderBlockedError from record handling", () => {
+    const adapter = getProviderAdapter("acuity_api")!;
+    expect(() =>
+      adapter.normalizeSourceRecord(
+        { externalId: "x", sourceUpdatedAt: null, payload: {} },
+        { organizationTimezone: "America/Los_Angeles" },
+      ),
+    ).toThrow(ProviderBlockedError);
+    expect(() => adapter.toEvidenceRow({ externalId: "x", sourceUpdatedAt: null, payload: {} })).toThrow(
+      ProviderBlockedError,
+    );
+    expect(adapter.fetchAppointments).toBeUndefined();
+  });
+
+  /**
+   * Setmore diverges from Acuity deliberately (Phase G). Its transport is
+   * implemented, so the fail-closed boundary moved to where it belongs:
+   * anything that could touch the network or the credential. Pure
+   * normalization is a deterministic offline function with no credential
+   * access, and blocking it would only prevent replaying already-captured
+   * evidence — no safety is gained.
+   */
+  it("setmore_api fails closed on every credential-touching path", async () => {
+    const adapter = getProviderAdapter("setmore_api")!;
+    expect(adapter.status).toBe("blocked");
+    await expect(
+      adapter.fetchAppointments!({
+        connectionId: "c",
+        organizationId: "o",
+        window: { startDate: "2099-01-01", endDate: "2099-01-31" },
+        cursor: null,
+        secret: "anything",
+        config: {},
+        pageLimit: 10,
+      }),
+    ).rejects.toThrow(ProviderBlockedError);
+  });
+
+  it("setmore_api normalizes offline evidence without a credential", () => {
+    const adapter = getProviderAdapter("setmore_api")!;
+    const record = {
+      externalId: "abc123",
+      sourceUpdatedAt: null,
+      payload: {
+        key: "abc123",
+        start_time: "2025-12-01T17:30Z",
+        end_time: "2025-12-01T18:30Z",
+        staff_key: "staff_1",
+        service_key: "svc_1",
+      },
+    };
+    const { normalized } = adapter.normalizeSourceRecord(record, {
+      organizationTimezone: "America/Los_Angeles",
+    });
+    expect(normalized.startAt).toBe("2025-12-01T17:30:00.000Z");
+    expect(normalized.durationMinutes).toBe(60);
+    // No status is available from the API, so none is invented.
+    expect(normalized.sourceStatus).toBeUndefined();
+    expect(adapter.toEvidenceRow(record).key).toBe("abc123");
+  });
 });
 
 describe("verified capability matrices (mirror the findings docs)", () => {

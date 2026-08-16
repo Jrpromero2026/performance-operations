@@ -585,6 +585,12 @@ async function createIntegrationBatch(
       parsed,
       adapter.importAdapter,
       timezone,
+      // Non-secret connection config only (same source the fetch context
+      // uses). `secret` is never in this object — credentials do not
+      // travel with staged rows.
+      ((args.connection.capabilities as Record<string, unknown> | null)?.config as
+        | Record<string, unknown>
+        | undefined) ?? undefined,
     );
     if (args.definition.auto_validate) {
       await runMatching(actor, {

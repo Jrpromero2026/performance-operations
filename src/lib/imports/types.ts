@@ -66,6 +66,15 @@ export interface NormalizeResult {
 
 export interface AdapterContext {
   organizationTimezone: string;
+  /**
+   * Non-secret, operator-declared configuration for the connection that
+   * produced these rows (never present for a hand-uploaded file). It
+   * carries facts an adapter cannot derive from the payload — e.g. the
+   * Setmore API `cost_unit`, which official documentation leaves
+   * ambiguous and which must be verified against a live account rather
+   * than guessed.
+   */
+  sourceConfig?: Record<string, unknown>;
 }
 
 /** Source-adapter contract. Parsing stays isolated in these modules. */

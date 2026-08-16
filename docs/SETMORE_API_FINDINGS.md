@@ -63,21 +63,45 @@ precision), `duration`, `staff_key`, `service_key`, `customer_key`,
   (cents vs dollars) is **ambiguous in the docs** and must be verified
   against a live account before any financial mapping.
 
-## Implementation status: **BLOCKED**
+## Implementation status (updated Phase G, 2026-08-15)
 
-Native `setmore-api-v1` is NOT implemented. Blocking inputs:
+**TRANSPORT IMPLEMENTED — NOT LIVE-VERIFIED.**
 
-1. No credentials — beta access must be granted by Setmore to the
+What changed in Phase G: `setmore-api-v1` is now written against the
+verified documented contract. Token exchange, cursor-paginated
+appointments/staff/services, customer search, header-driven rate-limit
+observation, and failure classification all exist in
+`src/lib/sources/setmore/api-client.ts` (server-only), and API payloads
+flow through the SAME canonical normalizer as the CSV export
+(`src/lib/sources/setmore/canonical.ts`).
+
+What has NOT changed: **no live account has ever been exercised.** The
+adapter therefore stays fail-closed. The gate is a single reviewed
+constant, `SETMORE_API_LIVE_VERIFIED` in
+`src/lib/integrations/providers/setmore.ts`, currently `false`; while it
+is false `adapter.status === "blocked"`, the sync engine refuses to run,
+and every credential-touching method throws `ProviderBlockedError`.
+Offline normalization of already-captured evidence is deliberately
+allowed, because it touches no credential and gains nothing from being
+blocked.
+
+Remaining blockers, unchanged in substance:
+
+1. **No credentials** — beta access must be granted by Setmore to the
    organization's Pro account (application email required).
-2. No documented appointment status → cannot map to canonical
-   statuses without live evidence.
-3. Recurrence/occurrence identity unverified.
-4. Cost unit ambiguity.
+2. **No documented appointment status.** Handled rather than assumed:
+   API-sourced appointments land as `unknown` and are excluded from
+   production and revenue. See `docs/SETMORE_STATUS_MAPPING.md`.
+3. **Recurrence/occurrence identity unverified.** Occurrence identity is
+   `(external id + start instant)` for both origins; whether the API's
+   `key` is occurrence-unique is testable by the reconciliation report.
+4. **Cost unit ambiguity.** Handled rather than assumed: API `cost` is
+   preserved as evidence and NOT mapped to a price until an operator
+   declares `cost_unit` on the connection.
 
-The provider is registered as `blocked` with this capability matrix;
-`src/lib/integrations/providers/setmore.ts` carries the setup
-checklist. **Manual CSV import remains the supported Setmore path.**
-When credentials arrive: validate token exchange, capture real
-appointment payloads (recurring + cancelled cases) as synthetic-ized
-fixtures, resolve the gaps above, then implement `setmore-api-v1`
-against verified shapes only.
+To flip the gate, complete `SETMORE_LIVE_VERIFICATION_CHECKLIST` in the
+provider module, run `reconcileSetmoreSources` over one full historical
+month against the CSV export for the same period, review every MISMATCH
+and API_ONLY/CSV_ONLY row, and record the verified shapes and date here.
+
+**Manual CSV import remains the supported Setmore path.**

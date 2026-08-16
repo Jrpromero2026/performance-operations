@@ -17,6 +17,8 @@ export const PERMISSIONS = [
   "trainer:read_self",
   "trainer:manage",
   "client:read",
+  /** Trainer self-scope: only clients derived from own appointment history. */
+  "client:read_self",
   "client:manage",
   "service:read",
   "service:manage",
@@ -106,6 +108,9 @@ export const PERMISSIONS = [
   "benchmark:approve",
   "benchmark:archive",
   "cohort:read",
+  "org_snapshot:read",
+  "org_snapshot:enter",
+  "org_snapshot:manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -218,6 +223,9 @@ export const ROLE_PERMISSIONS: Record<RoleKey, readonly Permission[]> = {
     "benchmark:approve",
     "benchmark:archive",
     "cohort:read",
+    "org_snapshot:read",
+    "org_snapshot:enter",
+    "org_snapshot:manage",
   ],
   payroll_manager: [
     "org:read",
@@ -272,6 +280,8 @@ export const ROLE_PERMISSIONS: Record<RoleKey, readonly Permission[]> = {
     "dashboard:update",
     "goal:read",
     "benchmark:read",
+    "org_snapshot:read",
+    "org_snapshot:enter",
   ],
   department_manager: [
     "org:read",
@@ -296,10 +306,14 @@ export const ROLE_PERMISSIONS: Record<RoleKey, readonly Permission[]> = {
     "goal:update",
     "benchmark:read",
     "cohort:read",
+    "org_snapshot:read",
   ],
   trainer: [
     "org:read",
     "trainer:read_self",
+    // Derived from appointment history by app.trainer_client_ids(); never
+    // a stored assignment, and never organization-wide client access.
+    "client:read_self",
     "payroll:read_self",
     "payroll:manage_time",
     "report:read",

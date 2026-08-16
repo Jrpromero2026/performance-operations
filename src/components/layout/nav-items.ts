@@ -17,6 +17,11 @@ export const NAV_ITEMS: NavItem[] = [
     iconPath: "M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2",
   },
   {
+    href: "/data-health",
+    label: "Data health",
+    iconPath: "M3 12h4l2 5 4-14 2 9h6",
+  },
+  {
     href: "/appointments",
     label: "Appointments",
     iconPath: "M8 2v4M16 2v4M3 9h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z",
@@ -45,6 +50,11 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/clients",
     label: "Clients",
     iconPath: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z",
+  },
+  {
+    href: "/snapshots",
+    label: "Club snapshots",
+    iconPath: "M4 7h16M4 12h16M4 17h10M18 15v6m3-3h-6",
   },
   {
     href: "/integrations",

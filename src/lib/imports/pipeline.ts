@@ -61,7 +61,9 @@ export async function stageBatch(
   batch: { id: string; organization_id: string },
   parsed: CsvParseResult,
   adapter: SourceAdapter,
-  organizationTimezone: string
+  organizationTimezone: string,
+  /** Non-secret connection config, for integration-created batches only. */
+  sourceConfig?: Record<string, unknown>
 ): Promise<StageResult> {
   const { supabase } = actor;
 
@@ -100,6 +102,7 @@ export async function stageBatch(
     const original = rowToObject(parsed.headers, raw);
     const { normalized, issues } = adapter.normalizeRow(original, {
       organizationTimezone,
+      sourceConfig,
     });
     inserts.push({
       import_batch_id: batch.id,

@@ -119,7 +119,7 @@ export interface ProviderAdapter {
    */
   normalizeSourceRecord(
     record: ProviderRecord,
-    ctx: { organizationTimezone: string },
+    ctx: { organizationTimezone: string; sourceConfig?: Record<string, unknown> },
   ): NormalizeResult;
 
   /** Column order for the deterministic evidence CSV built from records. */
