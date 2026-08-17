@@ -15,8 +15,10 @@
  *   1. READ ONLY. It calls fetch endpoints and nothing else. Setmore has
  *      no sandbox — every request hits the live account — so a probe that
  *      could write would be unacceptable.
- *   2. BOUNDED. One date window, one page, plus the staff and service
- *      directories. It cannot walk an account.
+ *   2. BOUNDED. One date window, at most MAX_PROBE_PAGES appointment
+ *      pages, plus the staff and service directories. It cannot walk an
+ *      account, and it reports when it stopped short rather than letting
+ *      a partial read look like a complete one.
  *   3. REDACTED BY DEFAULT. The output is a STRUCTURAL report. Values are
  *      emitted only for an explicit allowlist of non-identifying fields;
  *      everything else is reduced to "present / absent / how many
@@ -99,7 +101,15 @@ export interface SetmoreVerificationReport {
   appointmentCount: number;
   staffCount: number;
   serviceCount: number;
-  paginationObserved: boolean;
+  /** How many appointment pages the probe actually read. */
+  pagesFetched: number;
+  /** True when the cursor was still set after the last permitted page. */
+  moreAvailable: boolean;
+  /** Largest page returned — reveals the real server-side cap. */
+  observedPageSize: number;
+  /** The directory endpoints returned a cursor, so these lists are partial. */
+  servicesTruncated: boolean;
+  staffTruncated: boolean;
   rateLimitHeadersObserved: boolean;
   tokenLifetimeSeconds: number | null;
   fields: FieldObservation[];
@@ -328,7 +338,11 @@ export function buildVerificationReport(args: {
   appointments: readonly Record<string, unknown>[];
   staff: readonly Record<string, unknown>[];
   services: readonly Record<string, unknown>[];
-  paginationObserved: boolean;
+  pagesFetched: number;
+  moreAvailable: boolean;
+  observedPageSize: number;
+  servicesTruncated: boolean;
+  staffTruncated: boolean;
   rateLimitHeadersObserved: boolean;
   tokenLifetimeSeconds: number | null;
 }): SetmoreVerificationReport {
@@ -341,6 +355,24 @@ export function buildVerificationReport(args: {
   if (args.appointments.length === 0) {
     nextActions.push(
       "No appointments were returned. Re-run over a window known to contain bookings before drawing any conclusion — an empty window proves nothing."
+    );
+  }
+  // A partial read must never be mistaken for the account's real contents.
+  // Every count below is a floor, not a total, and saying so is the whole
+  // difference between "the API is missing data" and "that was page one".
+  if (args.moreAvailable) {
+    nextActions.push(
+      `The window has MORE appointments than the probe read: it stopped after ${args.pagesFetched} page(s). Every count here is a floor, not a total. Compare against the CSV export for the same period before concluding anything about API completeness.`
+    );
+  }
+  if (args.servicesTruncated) {
+    nextActions.push(
+      "The service catalogue was truncated — more services exist than were listed. Do not treat the service list as complete when mapping."
+    );
+  }
+  if (args.staffTruncated) {
+    nextActions.push(
+      "The staff directory was truncated — more staff exist than were listed."
     );
   }
   if (status.verdict === "no_status_field") {
@@ -378,7 +410,11 @@ export function buildVerificationReport(args: {
     appointmentCount: args.appointments.length,
     staffCount: args.staff.length,
     serviceCount: args.services.length,
-    paginationObserved: args.paginationObserved,
+    pagesFetched: args.pagesFetched,
+    moreAvailable: args.moreAvailable,
+    observedPageSize: args.observedPageSize,
+    servicesTruncated: args.servicesTruncated,
+    staffTruncated: args.staffTruncated,
     rateLimitHeadersObserved: args.rateLimitHeadersObserved,
     tokenLifetimeSeconds: args.tokenLifetimeSeconds,
     fields,
@@ -401,6 +437,15 @@ export function buildVerificationReport(args: {
  * structural questions, and there is no reason to pull client PII across
  * the wire to do it.
  */
+/**
+ * Bounded page budget. Still a probe, not a sync — but one page proved
+ * too little: Setmore returned 50 records for a month whose CSV export
+ * holds 2,883, which reads as "the API is missing data" when it may only
+ * mean "that was page one". Several pages settle it while keeping the
+ * call count small and predictable.
+ */
+export const MAX_PROBE_PAGES = 5;
+
 export async function probeSetmore(args: {
   refreshToken: string;
   startDate: string;
@@ -409,25 +454,48 @@ export async function probeSetmore(args: {
   const token = await exchangeRefreshToken(args.refreshToken);
   const tokenLifetimeSeconds = Math.round((token.expiresAtMs - Date.now()) / 1000);
 
-  const appointments = await fetchAppointmentsPage(token, {
-    startDate: args.startDate,
-    endDate: args.endDate,
-    limit: 150,
-    customerDetails: false,
-  });
+  const appointments: Record<string, unknown>[] = [];
+  const pageSizes: number[] = [];
+  let cursor: string | null = null;
+  let pagesFetched = 0;
+  let moreAvailable = false;
+  let rateLimitSeen = false;
+
+  for (let page = 0; page < MAX_PROBE_PAGES; page++) {
+    const result = await fetchAppointmentsPage(token, {
+      startDate: args.startDate,
+      endDate: args.endDate,
+      cursor,
+      limit: 150,
+      customerDetails: false,
+    });
+    appointments.push(...result.items);
+    pageSizes.push(result.items.length);
+    pagesFetched += 1;
+    if (result.rateLimit !== undefined) rateLimitSeen = true;
+    cursor = result.nextCursor;
+    if (!cursor) break;
+    // Cursor still set after the last permitted page → more data exists.
+    if (page === MAX_PROBE_PAGES - 1) moreAvailable = true;
+  }
+
   const staff = await fetchStaffPage(token);
   const services = await fetchServices(token);
+  if (staff.rateLimit !== undefined || services.rateLimit !== undefined) rateLimitSeen = true;
 
   return buildVerificationReport({
     window: { startDate: args.startDate, endDate: args.endDate },
-    appointments: appointments.items,
+    appointments,
     staff: staff.items,
     services: services.items,
-    paginationObserved: appointments.nextCursor !== null,
-    rateLimitHeadersObserved:
-      appointments.rateLimit !== undefined ||
-      staff.rateLimit !== undefined ||
-      services.rateLimit !== undefined,
+    pagesFetched,
+    moreAvailable,
+    // The largest page actually returned reveals the real server-side cap,
+    // which the official docs never name.
+    observedPageSize: pageSizes.length > 0 ? Math.max(...pageSizes) : 0,
+    servicesTruncated: services.nextCursor !== null,
+    staffTruncated: staff.nextCursor !== null,
+    rateLimitHeadersObserved: rateLimitSeen,
     tokenLifetimeSeconds,
   });
 }

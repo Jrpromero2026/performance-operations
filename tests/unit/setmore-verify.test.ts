@@ -163,7 +163,11 @@ describe("assembled report", () => {
       appointments,
       staff: [{ key: "staff_1" }],
       services,
-      paginationObserved: false,
+      pagesFetched: 1,
+      moreAvailable: false,
+      observedPageSize: appointments.length,
+      servicesTruncated: false,
+      staffTruncated: false,
       rateLimitHeadersObserved: false,
       tokenLifetimeSeconds: 604_739,
     });
@@ -204,5 +208,52 @@ describe("assembled report", () => {
     for (const secret of ["Jane", "Doe", "jane@example.com", "Elm St", "cust_1"]) {
       expect(serialized, `report leaked ${secret}`).not.toContain(secret);
     }
+  });
+});
+
+describe("partial reads must never look complete", () => {
+  const buildPartial = (over: Partial<Parameters<typeof buildVerificationReport>[0]> = {}) =>
+    buildVerificationReport({
+      window: { startDate: "2025-12-01", endDate: "2025-12-31" },
+      appointments: [appt()],
+      staff: [{ key: "s" }],
+      services: [{ key: "v" }],
+      pagesFetched: 5,
+      moreAvailable: false,
+      observedPageSize: 50,
+      servicesTruncated: false,
+      staffTruncated: false,
+      rateLimitHeadersObserved: false,
+      tokenLifetimeSeconds: 3_540,
+      ...over,
+    });
+
+  it("says the counts are a floor when the cursor was still set", () => {
+    const report = buildPartial({ moreAvailable: true });
+    const warning = report.nextActions.find((a) => /floor, not a total/.test(a));
+    expect(warning).toBeDefined();
+    expect(warning).toMatch(/stopped after 5 page\(s\)/);
+    // The exact confusion this prevents: reading a short page as evidence
+    // that the API is missing data.
+    expect(warning).toMatch(/before concluding anything about API completeness/);
+  });
+
+  it("does not cry wolf when the read was complete", () => {
+    const report = buildPartial({ moreAvailable: false });
+    expect(report.nextActions.some((a) => /floor, not a total/.test(a))).toBe(false);
+  });
+
+  it("warns separately when the service catalogue was truncated", () => {
+    const report = buildPartial({ servicesTruncated: true });
+    expect(report.nextActions.some((a) => /service catalogue was truncated/.test(a))).toBe(true);
+  });
+
+  it("carries the window through to the report", () => {
+    const report = buildPartial();
+    expect(report.window).toEqual({ startDate: "2025-12-01", endDate: "2025-12-31" });
+  });
+
+  it("preserves the observed page size, which the docs never state", () => {
+    expect(buildPartial({ observedPageSize: 50 }).observedPageSize).toBe(50);
   });
 });

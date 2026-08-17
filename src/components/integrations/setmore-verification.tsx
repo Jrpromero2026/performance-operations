@@ -95,6 +95,19 @@ export function SetmoreVerificationPanel({
   );
 }
 
+/**
+ * Token lifetime in the largest honest unit. Dividing straight to days
+ * turned a one-hour token into "0d", which reads as broken and hides the
+ * actual signal: that `expires_in` was not the documented ~7 days.
+ */
+function formatLifetime(seconds: number | null): string {
+  if (seconds === null) return "—";
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3_600) return `${Math.round(seconds / 60)}m`;
+  if (seconds < 172_800) return `${Math.round(seconds / 3_600)}h`;
+  return `${Math.round(seconds / 86_400)}d`;
+}
+
 function Finding({
   title,
   verdict,
@@ -131,17 +144,28 @@ function Finding({
 function VerificationReport({ report }: { report: SetmoreVerificationReport }) {
   return (
     <section className="space-y-4">
+      {/* Which window this report actually covers. The form resets its
+          inputs after a run, so without this the report is ambiguous. */}
+      <p className="rounded-[--radius-control] bg-surface-sunken px-3 py-2 text-xs text-ink-muted">
+        Window <strong className="text-ink">{report.window.startDate}</strong> to{" "}
+        <strong className="text-ink">{report.window.endDate}</strong> · read{" "}
+        {report.pagesFetched} page(s), largest page {report.observedPageSize} record(s)
+        {report.moreAvailable ? " · MORE DATA AVAILABLE beyond what was read" : ""}
+      </p>
+
+      {report.moreAvailable && (
+        <p className="rounded-[--radius-control] bg-warning-soft px-3 py-2 text-sm text-warning">
+          This is a partial read. The counts below are a floor, not a total — do not
+          read them as the account&rsquo;s real contents.
+        </p>
+      )}
+
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          ["Appointments", report.appointmentCount],
-          ["Staff", report.staffCount],
-          ["Services", report.serviceCount],
-          [
-            "Token lifetime",
-            report.tokenLifetimeSeconds !== null
-              ? `${Math.round(report.tokenLifetimeSeconds / 86_400)}d`
-              : "—",
-          ],
+          ["Appointments", report.moreAvailable ? `${report.appointmentCount}+` : report.appointmentCount],
+          ["Staff", report.staffTruncated ? `${report.staffCount}+` : report.staffCount],
+          ["Services", report.servicesTruncated ? `${report.serviceCount}+` : report.serviceCount],
+          ["Token lifetime", formatLifetime(report.tokenLifetimeSeconds)],
         ].map(([label, value]) => (
           <div
             key={String(label)}
