@@ -111,6 +111,20 @@ export default async function ConnectionDetailPage({
             This connection cannot activate or sync until the checklist is
             complete and the adapter is implemented against verified data.
           </p>
+          {connection.provider_key === "setmore_api" &&
+            can("integration:manage_credentials") && (
+              <p className="mt-3 text-xs text-ink-secondary">
+                Credentials issued? The{" "}
+                <Link
+                  href={`/configuration/integrations/${connectionId}/verify`}
+                  className="font-medium text-accent hover:underline"
+                >
+                  verification probe
+                </Link>{" "}
+                establishes what the live account actually returns — the evidence this
+                checklist requires before the gate can be lifted.
+              </p>
+            )}
         </Widget>
       )}
 
