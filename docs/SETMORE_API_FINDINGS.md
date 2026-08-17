@@ -17,9 +17,27 @@ Official documentation inspected **2026-07-29**:
 ## Authentication (verified)
 
 - Base URL: `https://developer.setmore.com/api/v1`
+- Booking API server: `https://developer.setmore.com/api/v1/bookingapi`
 - `GET /o/oauth2/token?refreshToken={refresh_token}` → bearer
   `access_token` (`token_type: BEARER`, `expires_in: 604799` ≈ 7 days).
 - All API calls: `Authorization: Bearer {access_token}`.
+
+**Re-confirmed 2026-08-17** against the quickstart supplied with the
+granted API access. The response envelope is:
+
+```
+{ "response": true,
+  "data": { "token": { "access_token", "token_type", "expires_in", "user_id" } } }
+```
+
+`user_id` was not in the earlier reference and is not consumed — we have no
+use for it and do not store it. The quickstart also states explicitly that
+integrations must "proactively call this endpoint to refresh tokens before
+they lapse," which is why `getAccessToken` holds a token for its lifetime
+rather than minting one per request.
+
+Access was granted as a **permanent refresh token issued by email**,
+exactly as documented. No OAuth client-id/secret flow is involved.
 
 ## Endpoints (verified)
 
@@ -45,6 +63,15 @@ precision), `duration`, `staff_key`, `service_key`, `customer_key`,
   ledger requires (completed / cancelled / no-show) are **not
   documented** in the API response. The CSV export's `Status`-bearing
   columns have no documented API equivalent.
+
+  **Re-confirmed 2026-08-17.** The quickstart supplied with the granted
+  access lists exactly three appointment operations —
+  `POST /appointment/create`, `GET /appointments`, and
+  `PUT /appointments/{appointment-id}/label`. The only per-appointment
+  annotation Setmore exposes for *writing* is the label, which is the
+  strongest documentary signal yet that no status concept exists in the
+  API surface at all. Still not proof about the read payload: only the
+  live probe settles that.
 - **No modified-since / incremental sync.** Only date-range windows;
   changed-record detection would require re-fetch + diff.
 - **No webhooks documented.**

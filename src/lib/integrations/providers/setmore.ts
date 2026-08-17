@@ -31,6 +31,7 @@ import {
   fetchAppointmentsPage,
   fetchServices,
   fetchStaffPage,
+  getAccessToken,
   SETMORE_MAX_APPOINTMENT_PAGE,
 } from "@/lib/sources/setmore/api-client";
 import {
@@ -202,7 +203,9 @@ export const setmoreAdapter: ProviderAdapter = {
 
   async fetchAppointments(ctx: FetchContext): Promise<ProviderPage> {
     assertLive();
-    const token = await exchangeRefreshToken(ctx.secret ?? "");
+    // Cached: the sync engine calls this once PER PAGE, so minting a token
+    // per call would mean one OAuth round-trip per 150 appointments.
+    const token = await getAccessToken(ctx.secret ?? "");
     const page = await fetchAppointmentsPage(token, {
       startDate: ctx.window.startDate,
       endDate: ctx.window.endDate,
@@ -262,7 +265,7 @@ export async function fetchSetmoreDirectories(ctx: FetchContext): Promise<{
   services: Record<string, unknown>[];
 }> {
   assertLive();
-  const token = await exchangeRefreshToken(ctx.secret ?? "");
+  const token = await getAccessToken(ctx.secret ?? "");
   const staff: Record<string, unknown>[] = [];
   let cursor: string | null = null;
   // Bounded: the documented staff page size is 50 and no real roster

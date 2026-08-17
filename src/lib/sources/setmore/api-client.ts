@@ -4,9 +4,15 @@
  * The refresh token, the derived access token, and every Authorization
  * header exist exclusively inside this module's call stack. Nothing here
  * is importable from a client component: no value is exported that
- * contains a credential, tokens are never cached to disk or to module
- * scope beyond a single sync run, and error messages pass through
- * `sanitizeErrorMessage` before they can reach an operator surface.
+ * contains a credential, nothing is ever written to disk, and error
+ * messages pass through `sanitizeErrorMessage` before they can reach an
+ * operator surface.
+ *
+ * Access tokens ARE held in process memory for their (≈7 day) lifetime —
+ * see `getAccessToken`. Setmore's own quickstart directs integrations to
+ * hold a token and refresh it before it lapses, and minting one per
+ * request would multiply calls against an account whose rate limits the
+ * vendor explicitly declines to publish.
  *
  * Contract verified from official documentation 2026-07-29
  * (docs/SETMORE_API_FINDINGS.md). No behaviour here is inferred from an
@@ -15,6 +21,7 @@
  * calls a create/update endpoint.
  */
 
+import { createHash } from "node:crypto";
 import { IntegrationFailure } from "@/lib/integrations/shared/failures";
 import type { RateLimitObservation } from "@/lib/integrations/shared/contract";
 
@@ -206,6 +213,58 @@ function readTokenPayload(body: Record<string, unknown>): SetmoreAccessToken | n
 
 export function isTokenUsable(token: SetmoreAccessToken | null): boolean {
   return token !== null && token.expiresAtMs > Date.now();
+}
+
+/* ----------------------------------------------------------- token cache */
+
+/**
+ * Process-local access-token cache.
+ *
+ * Keyed by a HASH of the refresh token, never the token itself, so the
+ * credential does not sit in a map key where a heap dump or an accidental
+ * serialization of the cache would expose it. Values hold only the derived
+ * access token and its expiry.
+ *
+ * Bounded, because one process may serve many connections and an unbounded
+ * map keyed by credential is a slow leak.
+ */
+const MAX_CACHED_TOKENS = 32;
+const tokenCache = new Map<string, SetmoreAccessToken>();
+
+function cacheKey(refreshToken: string): string {
+  return createHash("sha256").update(refreshToken.trim()).digest("hex");
+}
+
+/**
+ * Return a usable access token, exchanging the refresh token only when
+ * there is no live one cached.
+ *
+ * This is what callers should use. `exchangeRefreshToken` remains exported
+ * for the paths that deliberately want a fresh round-trip — credential
+ * validation, which is asking "does this credential still work right now?"
+ * and must not be answered from cache.
+ */
+export async function getAccessToken(
+  refreshToken: string,
+  options: SetmoreRequestOptions = {}
+): Promise<SetmoreAccessToken> {
+  const key = cacheKey(refreshToken);
+  const cached = tokenCache.get(key);
+  if (isTokenUsable(cached ?? null)) return cached!;
+
+  const token = await exchangeRefreshToken(refreshToken, options);
+  if (tokenCache.size >= MAX_CACHED_TOKENS) {
+    // Evict the oldest insertion; Map preserves insertion order.
+    const oldest = tokenCache.keys().next();
+    if (!oldest.done) tokenCache.delete(oldest.value);
+  }
+  tokenCache.set(key, token);
+  return token;
+}
+
+/** Drop every cached token. Used on credential rotation and by tests. */
+export function clearAccessTokenCache(): void {
+  tokenCache.clear();
 }
 
 /* -------------------------------------------------------------- fetching */
