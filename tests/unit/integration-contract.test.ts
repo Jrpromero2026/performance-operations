@@ -111,9 +111,21 @@ describe("verified capability matrices (mirror the findings docs)", () => {
     const caps = getProviderAdapter("setmore_api")!.getCapabilities();
     expect(caps.appointmentsByDate).toBe(true);
     expect(caps.cursorPagination).toBe(true);
-    expect(caps.maxPageSize).toBe(150);
+    // OBSERVED, not documented. The official docs claim 150; the live
+    // account returns 50 and ignores the `limit` parameter entirely
+    // (verified 2026-08-17). The capability matrix must describe the API
+    // that exists, not the one that was written down — a sync planned
+    // against 150 would underestimate its request count threefold.
+    expect(caps.maxPageSize).toBe(50);
     expect(caps.incrementalSync).toBe(false);
     expect(caps.webhooks).toBe(false);
+  });
+
+  it("Setmore capability notes record where the docs proved wrong", () => {
+    const notes = getProviderAdapter("setmore_api")!.getCapabilities().notes.join(" ");
+    expect(notes).toMatch(/Page size is 50, not the documented 150/);
+    expect(notes).toMatch(/~2 hours, not the documented ~7 days/);
+    expect(notes).toMatch(/does not return historical\/archived services/);
   });
 
   it("Acuity: date windows + webhooks, no cursor", () => {

@@ -27,8 +27,17 @@ import type { RateLimitObservation } from "@/lib/integrations/shared/contract";
 
 export const SETMORE_API_BASE = "https://developer.setmore.com/api/v1";
 
-/** Documented ceilings — requesting more is a client error, not a limit to discover. */
-export const SETMORE_MAX_APPOINTMENT_PAGE = 150;
+/**
+ * Page sizes.
+ *
+ * The official docs claim 150 appointments per request. The live account
+ * returns **50** and ignores the `limit` parameter entirely (verified
+ * 2026-08-17 — see docs/SETMORE_API_FINDINGS.md). The observed value is
+ * used for planning; the documented one is kept only to record the
+ * discrepancy.
+ */
+export const SETMORE_DOCUMENTED_MAX_APPOINTMENT_PAGE = 150;
+export const SETMORE_MAX_APPOINTMENT_PAGE = 50;
 export const SETMORE_MAX_STAFF_PAGE = 50;
 
 export interface SetmoreAccessToken {

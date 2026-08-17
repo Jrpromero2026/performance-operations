@@ -1,5 +1,63 @@
 # Setmore API Findings
 
+## LIVE-VERIFIED EVIDENCE — 2026-08-17
+
+First probes against the real Timberhill Setmore account
+(`Timberhill Setmore` connection, window 2025-12-01 → 2025-12-31, two runs
+reading 50 and 250 appointments). **Three documented facts turned out to
+be wrong**, which is precisely why documentation was never treated as
+verification.
+
+| Question | Documented | **Observed live** | Status |
+| --- | --- | --- | --- |
+| Appointment status field | absent | **absent — confirmed** | ✅ SETTLED |
+| `label` values | "No Label" | `No Label`, `No label`, `no label` | ✅ junk, never a status |
+| Cost unit | ambiguous | **dollars** (`106.5`, `110.5` — integer cents cannot produce a fraction) | ✅ SETTLED |
+| Max page size | **150** | **50** — the `limit` parameter is ignored | ❌ DOC WRONG |
+| Token lifetime (`expires_in`) | **604799 (~7 days)** | **~2 hours** | ❌ DOC WRONG |
+| Services endpoint completeness | not stated | **incomplete** — 19 distinct `service_key`s referenced by appointments, only 5 returned by `GET /services` | ❌ NEW GAP |
+| Occurrence identity | unaddressed | **unresolved** — see below | ⚠️ OPEN (safe either way) |
+
+### Consequences
+
+- **Page size is 50, not 150.** A December sync (2,883 CSV rows) needs
+  ~58 requests. With rate limits unspecified by the vendor, per-month
+  sync cost is a real operational consideration.
+- **Tokens last ~2 hours, not ~7 days.** `getAccessToken` caches to the
+  actual reported expiry, so this is handled — but a long backfill will
+  cross a token boundary, and any design assuming a week-long token is
+  wrong.
+- **The services endpoint cannot resolve historical services.** Only 5 of
+  the 19 service keys in use are returned, so most historical services
+  have no name available via the API. The CSV export carries service
+  names directly. **This is a second independent reason the hybrid
+  strategy is permanent, alongside status.**
+- **Free sessions are visible**: `cost: 0` appears in real data,
+  consistent with the free-session payouts in the payroll trackers.
+
+### Occurrence identity — deliberately still open
+
+250 appointments returned 250 distinct keys with zero repeats. That is
+NOT evidence of occurrence-unique keys: at ~93 appointments/day, 250
+records span under three days, and a weekly recurring series cannot
+repeat inside that window. The December CSV contains 204 duplicate-ID
+groups, so recurrence certainly exists in the month.
+
+This is **not a blocker**. Occurrence identity is `(external id + start
+instant)` for both origins, which is correct under both readings — if the
+key is occurrence-unique the composite is still unique; if it is
+series-level the composite correctly separates occurrences.
+
+The question that actually matters is different, and no probe can answer
+it because key values are redacted: **do API `key` values equal CSV
+`Booking ID` values for the same appointment?** If they do not,
+reconciliation will report everything as API_ONLY/CSV_ONLY. That is
+exactly what the reconciliation report is for, and it settles occurrence
+identity as a side effect.
+
+---
+
+
 Official documentation inspected **2026-07-29**:
 - https://setmore.docs.apiary.io/ (full API reference, rendered)
 - https://www.setmore.com/developers

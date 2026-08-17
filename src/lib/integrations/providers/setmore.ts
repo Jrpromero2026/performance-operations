@@ -57,11 +57,19 @@ export const SETMORE_API_LIVE_VERIFIED = false;
  * Reasons the provider is still blocked. These are CREDENTIAL- and
  * EVIDENCE-dependent, not implementation gaps: the code paths exist.
  */
+/**
+ * What is STILL blocking, as of the live probes on 2026-08-17.
+ *
+ * Two earlier reasons are resolved and deliberately removed: the account
+ * has now been exercised, and the cost unit is verified as dollars and
+ * declared on the connection. Leaving settled items here would misstate
+ * what actually remains.
+ */
 const BLOCKED_REASONS = [
-  "Not live-verified: Setmore API access is a limited beta requiring an approved application (api@setmore.com) from the organization's Pro account, and no live account has been exercised.",
-  "The documented appointment payload has NO status field (free-form label only) — every API-sourced appointment therefore lands as `unknown` and must be reconciled against a CSV export before it can be treated as production or revenue.",
-  "Recurring-series occurrence identity is unverified: Phase 3 established from real CSV exports that Setmore Booking IDs identify SERIES, and the API docs never address recurrence.",
-  "Cost unit (cents vs dollars) is ambiguous across official examples; until an operator declares it on the connection, API cost is preserved as evidence and NOT mapped to a price.",
+  "API/CSV reconciliation has not been run. It is unproven that an API appointment `key` equals the CSV `Booking ID` for the same appointment — if they differ, every record reconciles as API_ONLY/CSV_ONLY and no API data can be trusted to align with history.",
+  "CONFIRMED LIVE: the API exposes no appointment status field (only a free-form `label`, observed as 'No Label'/'No label'/'no label'). Every API-sourced appointment lands as `unknown`, so an API-only ingest reports zero completed sessions and zero revenue. The CSV export remains authoritative for status.",
+  "CONFIRMED LIVE: GET /services returns only 5 services while appointments reference 19 distinct service keys, so historical service NAMES are unavailable via the API and must come from the CSV export.",
+  "Occurrence identity is unresolved: 250 consecutive appointments spanned under three days, which cannot reveal a weekly recurring series. Identity is (key + start instant), which is correct under both readings, but the reconciliation report must confirm it.",
 ];
 
 export const SETMORE_LIVE_VERIFICATION_CHECKLIST = [
@@ -170,9 +178,11 @@ export const setmoreAdapter: ProviderAdapter = {
       notes: [
         "NO appointment status field: API-sourced appointments land as `unknown` and are never counted as completed or revenue-bearing.",
         "Cost unit (cents vs dollars) must be declared per connection after live verification; until then cost is evidence only.",
+        "Page size is 50, not the documented 150, and the `limit` parameter is ignored (verified live 2026-08-17). A one-month backfill is ~58 requests.",
+        "Access tokens last ~2 hours, not the documented ~7 days (verified live 2026-08-17).",
+        "GET /services does not return historical/archived services: 19 service keys were in use against 5 catalogued. Service NAMES come from the CSV export.",
         "Rate limits unspecified in official docs (monitored per-minute); limits are read from response headers when present.",
         "No sandbox: all API requests run against live accounts, so this transport is read-only.",
-        "Access token lifetime ≈ 7 days (expires_in 604799).",
       ],
     };
   },
