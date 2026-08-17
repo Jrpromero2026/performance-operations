@@ -10,6 +10,7 @@ import {
   type ActionState,
 } from "./shared";
 import { classifyFailure } from "@/lib/integrations/shared/failures";
+import { explainSecretResolutionFailure } from "@/lib/integrations/shared/credential-errors";
 import { probeSetmore, type SetmoreVerificationReport } from "@/lib/sources/setmore/verify";
 
 export interface VerificationState extends ActionState {
@@ -83,12 +84,25 @@ export async function runSetmoreVerification(
   }
 
   // Credential resolves SERVER-SIDE only and stays inside this call stack.
-  const { data: secret } = await actor.supabase.rpc("get_connection_secret_with_key", {
-    p_connection_id: connectionId,
-    p_server_key: process.env.WORKER_SECRET,
-  });
+  //
+  // The RPC RAISES a precise reason for every failure mode. Discarding
+  // `error` here would replace an actionable diagnostic with a generic
+  // one — the opposite of what a verification tool is for.
+  const { data: secret, error: secretError } = await actor.supabase.rpc(
+    "get_connection_secret_with_key",
+    {
+      p_connection_id: connectionId,
+      p_server_key: process.env.WORKER_SECRET,
+    }
+  );
+  if (secretError) {
+    return { error: explainSecretResolutionFailure(secretError.message) };
+  }
   if (typeof secret !== "string" || secret.trim() === "") {
-    return { error: "The stored credential could not be resolved." };
+    return {
+      error:
+        "The stored credential resolved to an empty value. Re-submit the Setmore refresh token on the connection page.",
+    };
   }
 
   let report: SetmoreVerificationReport;

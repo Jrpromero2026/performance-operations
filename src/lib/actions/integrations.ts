@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/shared";
 import { notifyPermissionHolders } from "@/lib/operations/notify";
 import { getProviderAdapter } from "@/lib/integrations/registry";
+import { explainSecretResolutionFailure } from "@/lib/integrations/shared/credential-errors";
 import { runSync } from "@/lib/integrations/sync/engine";
 import {
   executeScheduledReport,
@@ -155,12 +156,28 @@ export async function validateConnection(
     .eq("id", connectionId);
 
   // Resolve the credential SERVER-SIDE (never sent to the browser).
+  //
+  // A resolution failure is reported as itself rather than swallowed:
+  // passing `secret = null` onward makes an infrastructure problem
+  // (missing/mismatched worker key) look like a provider rejecting the
+  // credential, which sends the operator to rotate a token that was
+  // never the problem.
   let secret: string | null = null;
   if (process.env.WORKER_SECRET && connection.secret_ref) {
-    const { data } = await actor.supabase.rpc("get_connection_secret_with_key", {
-      p_connection_id: connectionId,
-      p_server_key: process.env.WORKER_SECRET,
-    });
+    const { data, error: secretError } = await actor.supabase.rpc(
+      "get_connection_secret_with_key",
+      {
+        p_connection_id: connectionId,
+        p_server_key: process.env.WORKER_SECRET,
+      },
+    );
+    if (secretError) {
+      await actor.supabase
+        .from("integration_connections")
+        .update({ status: "failed", last_health_status: "worker_key_unavailable" })
+        .eq("id", connectionId);
+      return { error: explainSecretResolutionFailure(secretError.message) };
+    }
     secret = (data as string | null) ?? null;
   }
 
