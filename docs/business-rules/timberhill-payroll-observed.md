@@ -32,6 +32,38 @@ amounts are reproduced here.
   and who receives it.
 - Rounding rules.
 
+
+## July 2026 evidence (per-trainer tab finally exported — 2026-08-17)
+
+The owner supplied the July 2026 tracker INCLUDING the per-trainer
+calculation tab that every earlier export omitted. Per the standing rule,
+no identifiable per-person amounts are reproduced here; the structural
+findings are:
+
+| Question | Answer | Evidence |
+| --- | --- | --- |
+| **U1c: cliff vs marginal** | **CLIFF.** One rate applied to the trainer's ENTIRE monthly gross. | Rate x whole-month gross reproduces the sheet's payroll to the cent; a marginal-bracket calculation does not. |
+| Rate spread in effect | 50% / 55% / 70% across the roster | Per-trainer tab |
+| **Exemptions** | Some trainers are EXEMPT from the milestone ladder and hold a flat top rate regardless of volume (owner statement, 2026-08-17: two exempt trainers, plus the owner who self-applies the standard). | Owner statement; explains a 70% split at a gross the ladder alone would not reach |
+| Free sessions | 100% of listed value paid to the trainer | Tab arithmetic |
+| Consultations | 0% split in July (contrast with earlier years' small flat payout — treat as period-specific configuration, not a constant) | Tab |
+| PACK Training / Rookies | 50% | Tab |
+| Nutrition Coaching | 70% | Tab |
+| Department commission (5%) | **Paid to the department manager** — their monthly total equals their split plus the commission line exactly | Summary + tab arithmetic |
+| Overhead | 12% of gross (unchanged) | Summary |
+| Salary line | $500/month (unchanged) | Summary |
+
+Still required before tiers can be configured:
+
+1. **The Commission Milestones document** (owner has it; not yet supplied)
+   — the thresholds that move non-exempt trainers between 50/55/70, and
+   whether a reached tier is sticky month-to-month. Two mid-roster
+   trainers hold 70% at grosses the historical 50/55/60/65/70 ladder
+   would not explain; the milestones doc must account for them.
+2. **Roster deltas**: three trainers appear in July 2026 who are absent
+   from December 2025, and two vice versa. December-period validation
+   needs December-period terms.
+
 ## Required owner inputs to unblock Timberhill validation
 
 1. The full workbook (xlsx with per-trainer tabs and formulas), or a
