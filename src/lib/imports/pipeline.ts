@@ -56,6 +56,30 @@ export async function selectAllPages<T>(
   return all;
 }
 
+/**
+ * Bounded-concurrency runner for per-row writes. The original sequential
+ * `await` loop meant one HTTP round-trip per row — ~2,900 for a real
+ * Timberhill month — which blew past the server-action time budget and
+ * made every button on the batch page appear dead. Row updates are
+ * independent, so a bounded pool preserves ordering-independence while
+ * cutting wall time by the concurrency factor.
+ */
+const WRITE_CONCURRENCY = 20;
+
+async function runBounded(jobs: Array<() => PromiseLike<void>>): Promise<void> {
+  let next = 0;
+  const workers = Array.from(
+    { length: Math.min(WRITE_CONCURRENCY, jobs.length) },
+    async () => {
+      while (next < jobs.length) {
+        const index = next++;
+        await jobs[index]();
+      }
+    }
+  );
+  await Promise.all(workers);
+}
+
 /** Issue codes owned by the matching pass (superseded + regenerated on re-run). */
 const MATCH_ISSUE_CODES = [
   "unmatched_trainer",
@@ -427,6 +451,7 @@ export async function runMatching(
   );
 
   const seenInBatch = new Set<string>();
+  const rowWrites: Array<() => PromiseLike<void>> = [];
   const newIssues: Array<{
     import_row_id: string;
     import_batch_id: string;
@@ -588,20 +613,37 @@ export async function runMatching(
     const key = occurrenceKey(staged);
     if (key) seenInBatch.add(key);
 
-    await supabase
-      .from("import_rows")
-      .update({
-        matched_trainer_id: trainerId,
-        trainer_match_method: trainerMethod,
-        matched_service_id: serviceId,
-        service_match_method: serviceMethod,
-        matched_client_id: clientId,
-        client_match_method: clientMethod,
-        canonical_status: canonicalStatus,
-        duplicate_class: duplicateClass,
-      })
-      .eq("id", row.id);
+    // Skip rows whose stored values already match — after a repair pass
+    // (or a second re-run) this makes matching near-free.
+    if (
+      row.matched_trainer_id === trainerId &&
+      row.matched_service_id === serviceId &&
+      row.matched_client_id === clientId &&
+      row.canonical_status === canonicalStatus &&
+      row.duplicate_class === duplicateClass
+    ) {
+      continue;
+    }
+    rowWrites.push(() =>
+      supabase
+        .from("import_rows")
+        .update({
+          matched_trainer_id: trainerId,
+          trainer_match_method: trainerMethod,
+          matched_service_id: serviceId,
+          service_match_method: serviceMethod,
+          matched_client_id: clientId,
+          client_match_method: clientMethod,
+          canonical_status: canonicalStatus,
+          duplicate_class: duplicateClass,
+        })
+        .eq("id", row.id)
+        .then(({ error: writeError }) => {
+          if (writeError) throw new Error(`row_update_failed:${writeError.code}`);
+        })
+    );
   }
+  await runBounded(rowWrites);
 
   for (let i = 0; i < newIssues.length; i += CHUNK_SIZE) {
     const { error: issueError } = await supabase
@@ -625,11 +667,20 @@ export async function reconcileBatch(
   const { supabase } = actor;
 
   const [rows, issues] = await Promise.all([
-    selectAllPages<{ id: string; processing_status: string; duplicate_class: string | null }>(
+    selectAllPages<{
+      id: string;
+      processing_status: string;
+      duplicate_class: string | null;
+      blocking_issue_count: number;
+      warning_count: number;
+      info_count: number;
+    }>(
       (from, to) =>
         supabase
           .from("import_rows")
-          .select("id, processing_status, duplicate_class")
+          .select(
+            "id, processing_status, duplicate_class, blocking_issue_count, warning_count, info_count"
+          )
           .eq("import_batch_id", batchId)
           .order("source_row_number")
           .range(from, to),
@@ -665,6 +716,7 @@ export async function reconcileBatch(
   let blocked = 0;
   let duplicates = 0;
   let excluded = 0;
+  const reconcileWrites: Array<() => PromiseLike<void>> = [];
 
   for (const row of rows) {
     if (row.processing_status === "excluded") {
@@ -684,27 +736,33 @@ export async function reconcileBatch(
     } else {
       blocked++;
     }
-    if (row.processing_status !== nextStatus) {
-      await supabase
+    const infos = infoCount.get(row.id) ?? 0;
+    // No-op skip: identical counts and status mean nothing to write. This
+    // is what keeps reconciliation fast on every pass after the first.
+    if (
+      row.processing_status === nextStatus &&
+      row.blocking_issue_count === blocking &&
+      row.warning_count === warnings &&
+      row.info_count === infos
+    ) {
+      continue;
+    }
+    reconcileWrites.push(() =>
+      supabase
         .from("import_rows")
         .update({
           processing_status: nextStatus,
           blocking_issue_count: blocking,
           warning_count: warnings,
-          info_count: infoCount.get(row.id) ?? 0,
+          info_count: infos,
         })
-        .eq("id", row.id);
-    } else {
-      await supabase
-        .from("import_rows")
-        .update({
-          blocking_issue_count: blocking,
-          warning_count: warnings,
-          info_count: infoCount.get(row.id) ?? 0,
+        .eq("id", row.id)
+        .then(({ error: writeError }) => {
+          if (writeError) throw new Error(`reconcile_write_failed:${writeError.code}`);
         })
-        .eq("id", row.id);
-    }
+    );
   }
+  await runBounded(reconcileWrites);
 
   const { data: batch } = await supabase
     .from("import_batches")

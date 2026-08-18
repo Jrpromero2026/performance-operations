@@ -9,6 +9,8 @@ import { getWorkspaceContext } from "@/lib/workspace/server";
 import { ApproveButton } from "../batch-actions";
 import { AcknowledgeWarningsButton } from "./acknowledge-button";
 
+export const maxDuration = 120;
+
 export const metadata: Metadata = { title: "Import approval" };
 
 export default async function ImportApprovalPage({

@@ -15,6 +15,13 @@ import {
   ReverseForm,
 } from "./batch-actions";
 
+/**
+ * Server actions invoked from this page (re-run matching, resolutions)
+ * sweep every row of the batch. A real Timberhill month is ~2,900 rows,
+ * which does not fit the default function budget.
+ */
+export const maxDuration = 120;
+
 export const metadata: Metadata = { title: "Import batch" };
 
 export default async function ImportBatchPage({
