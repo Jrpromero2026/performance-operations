@@ -95,3 +95,24 @@ describe("model configuration", () => {
     );
   });
 });
+
+describe("unknown metric ids self-correct instead of reading as gaps", () => {
+  it("suggests the real cancellation metric for the guess the model actually made", async () => {
+    const { nearestMetricIds } = await import("@/lib/director/tools");
+    expect(nearestMetricIds("sessions_cancelled")).toContain("appointments_cancelled");
+    expect(nearestMetricIds("session_utilization_rate")).toContain("schedule_utilization_bp");
+    expect(nearestMetricIds("sessions_total")).toContain("appointments_total");
+  });
+
+  it("returns an explicit do-not-report-as-unavailable error from get_metric", async () => {
+    const { getDirectorTool } = await import("@/lib/director/tools");
+    const tool = getDirectorTool("get_metric")!;
+    // Unknown ids must be rejected BEFORE any I/O, so a dummy context works.
+    const result = (await tool.run(
+      {} as never,
+      { metric_id: "sessions_cancelled" }
+    )) as { error?: string; did_you_mean?: string[] };
+    expect(result.error).toMatch(/Do not report this as unavailable/);
+    expect(result.did_you_mean).toContain("appointments_cancelled");
+  });
+});

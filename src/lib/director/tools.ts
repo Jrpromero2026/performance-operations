@@ -105,6 +105,41 @@ function compactResult(r: CompactableResult) {
   };
 }
 
+/** Token-overlap nearest neighbours for a guessed metric id. */
+export function nearestMetricIds(guess: string, limit = 5): string[] {
+  const SYNONYMS: Record<string, string> = {
+    session: "appointments", sessions: "appointments",
+    cancelled: "cancelled", cancellations: "cancelled",
+    utilization: "utilization", revenue: "revenue", pay: "payroll",
+    clients: "clients", total: "total",
+  };
+  const tokens = new Set(
+    guess.toLowerCase().split(/[^a-z]+/).filter(Boolean)
+      .map((t) => SYNONYMS[t] ?? t)
+  );
+  // Weight shared tokens by rarity: matching "utilization" (2 metrics)
+  // says far more than matching "appointments" (a dozen), so common
+  // tokens must not flood the list on alphabetical tie-breaks.
+  const ids = [...METRIC_DEFINITIONS.keys()];
+  const tokenFrequency = new Map<string, number>();
+  for (const id of ids) {
+    for (const t of new Set(id.split("_"))) {
+      tokenFrequency.set(t, (tokenFrequency.get(t) ?? 0) + 1);
+    }
+  }
+  return ids
+    .map((id) => {
+      const score = [...new Set(id.split("_"))]
+        .filter((t) => tokens.has(t))
+        .reduce((sum, t) => sum + 1 / (tokenFrequency.get(t) ?? 1), 0);
+      return { id, score };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
+    .slice(0, limit)
+    .map((x) => x.id);
+}
+
 /* ------------------------------------------------------------- tools */
 
 const getDataFreshness: DirectorTool = {
@@ -183,6 +218,15 @@ const getMetric: DirectorTool = {
   async run(ctx, args) {
     const metricId = str(args, "metric_id");
     if (!metricId) return { error: "metric_id is required" };
+    // A guessed id must NOT read as "this system cannot report that".
+    // Return the nearest real ids so the model self-corrects instead of
+    // telling the user the data does not exist when it does.
+    if (!METRIC_DEFINITIONS.has(metricId)) {
+      return {
+        error: `Unknown metric id "${metricId}". Do not report this as unavailable — one of these likely IS the metric you want:`,
+        did_you_mean: nearestMetricIds(metricId),
+      };
+    }
     const window = await resolveWindow(ctx, args);
     const session = await IntelligenceSession.create(
       ctx.actor,
