@@ -7,6 +7,11 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   {
+    href: "/director",
+    label: "PT Director",
+    iconPath: "M12 2a7 7 0 0 0-7 7c0 2.4 1.2 4.5 3 5.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3c1.8-1.2 3-3.3 3-5.7a7 7 0 0 0-7-7ZM10 21h4",
+  },
+  {
     href: "/overview",
     label: "Overview",
     iconPath: "M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z",

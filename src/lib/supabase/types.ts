@@ -1564,6 +1564,173 @@ export type Database = {
           },
         ]
       }
+      director_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          profile_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          profile_id: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          profile_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "director_conversations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "director_conversations_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      director_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          profile_id: string
+          role: string
+          tool_name: string | null
+          tool_payload: Json | null
+        }
+        Insert: {
+          content?: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          profile_id: string
+          role: string
+          tool_name?: string | null
+          tool_payload?: Json | null
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          profile_id?: string
+          role?: string
+          tool_name?: string | null
+          tool_payload?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "director_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "director_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "director_messages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "director_messages_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      director_runs: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          id: string
+          input_tokens: number | null
+          model: string
+          organization_id: string
+          output_tokens: number | null
+          profile_id: string
+          status: string
+          tool_calls: number
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          input_tokens?: number | null
+          model: string
+          organization_id: string
+          output_tokens?: number | null
+          profile_id: string
+          status?: string
+          tool_calls?: number
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          input_tokens?: number | null
+          model?: string
+          organization_id?: string
+          output_tokens?: number | null
+          profile_id?: string
+          status?: string
+          tool_calls?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "director_runs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "director_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "director_runs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "director_runs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_delivery_events: {
         Row: {
           artifact_id: string | null
