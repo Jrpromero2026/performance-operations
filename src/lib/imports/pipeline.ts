@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { ActorContext } from "@/lib/actions/shared";
-import type { Json } from "@/lib/supabase/types";
+import type { Json, Tables } from "@/lib/supabase/types";
 import { rowToObject, type CsvParseResult } from "./csv";
 import {
   classifyDuplicate,
@@ -24,6 +24,37 @@ import type { NormalizedRow, RowIssue, SourceAdapter } from "./types";
  */
 
 const CHUNK_SIZE = 500;
+
+/**
+ * PostgREST caps every response at `max_rows` (1000 in this project), and
+ * it does so SILENTLY — a truncated select looks exactly like a complete
+ * one. Every read below that can exceed a thousand rows must therefore
+ * page explicitly.
+ *
+ * This is not hypothetical: the first real Timberhill import (2,883 rows)
+ * matched only its first 1,000, dropped the issue rows for everything
+ * past that, and then marked 992 rows `ready` that in fact carried
+ * blocking unmatched-trainer and unmatched-service issues — because the
+ * issue query was truncated too. Silent truncation in an import pipeline
+ * is a data-integrity bug, not a performance detail.
+ */
+const SELECT_PAGE_SIZE = 1000;
+
+export async function selectAllPages<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { code?: string } | null }>,
+  errorLabel: string
+): Promise<T[]> {
+  const all: T[] = [];
+  for (let from = 0; ; from += SELECT_PAGE_SIZE) {
+    const { data, error } = await page(from, from + SELECT_PAGE_SIZE - 1);
+    if (error) throw new Error(`${errorLabel}:${error.code ?? "unknown"}`);
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    // A short page is the last page.
+    if (data.length < SELECT_PAGE_SIZE) break;
+  }
+  return all;
+}
 
 /** Issue codes owned by the matching pass (superseded + regenerated on re-run). */
 const MATCH_ISSUE_CODES = [
@@ -131,11 +162,16 @@ export async function stageBatch(
     if (error) throw new Error(`row_insert_failed:${error.code}`);
   }
 
-  const { data: idRows, error: idError } = await supabase
-    .from("import_rows")
-    .select("id, source_row_number")
-    .eq("import_batch_id", batch.id);
-  if (idError || !idRows) throw new Error("row_id_load_failed");
+  const idRows = await selectAllPages<{ id: string; source_row_number: number }>(
+    (from, to) =>
+      supabase
+        .from("import_rows")
+        .select("id, source_row_number")
+        .eq("import_batch_id", batch.id)
+        .order("source_row_number")
+        .range(from, to),
+    "row_id_load_failed"
+  );
   const idByNumber = new Map(idRows.map((r) => [r.source_row_number, r.id]));
 
   const issueInserts = issueSeeds.flatMap(({ rowNumber, issue }) => {
@@ -241,11 +277,25 @@ export async function loadLookups(
         .select("source_value_normalized, canonical_status")
         .eq("organization_id", organizationId)
         .eq("source", source),
-      supabase
-        .from("appointments")
-        .select("external_appointment_id, start_at, trainer_id, service_id, canonical_status, duration_minutes, record_state")
-        .eq("organization_id", organizationId)
-        .eq("source", source),
+      selectAllPages<{
+        external_appointment_id: string | null;
+        start_at: string;
+        trainer_id: string | null;
+        service_id: string | null;
+        canonical_status: string;
+        duration_minutes: number;
+        record_state: string;
+      }>(
+        (from, to) =>
+          supabase
+            .from("appointments")
+            .select("external_appointment_id, start_at, trainer_id, service_id, canonical_status, duration_minutes, record_state")
+            .eq("organization_id", organizationId)
+            .eq("source", source)
+            .order("start_at")
+            .range(from, to),
+        "existing_appointments_failed"
+      ),
     ]);
 
   const aliasByTrainer = new Map<string, string[]>();
@@ -322,7 +372,7 @@ export async function loadLookups(
     (mappings.data ?? []).map((m) => [m.source_value_normalized, m.canonical_status])
   );
 
-  const existing: ExistingOccurrence[] = (existingRes.data ?? []).map((a) => ({
+  const existing: ExistingOccurrence[] = existingRes.map((a) => ({
     externalAppointmentId: a.external_appointment_id,
     startAt: a.start_at,
     trainerId: a.trainer_id,
@@ -364,13 +414,17 @@ export async function runMatching(
     .in("code", MATCH_ISSUE_CODES)
     .eq("resolution_status", "open");
 
-  const { data: rows, error } = await supabase
-    .from("import_rows")
-    .select("*")
-    .eq("import_batch_id", batch.id)
-    .not("processing_status", "in", '("excluded","posted")')
-    .order("source_row_number");
-  if (error || !rows) throw new Error("rows_load_failed");
+  const rows = await selectAllPages<Tables<"import_rows">>(
+    (from, to) =>
+      supabase
+        .from("import_rows")
+        .select("*")
+        .eq("import_batch_id", batch.id)
+        .not("processing_status", "in", '("excluded","posted")')
+        .order("source_row_number")
+        .range(from, to),
+    "rows_load_failed"
+  );
 
   const seenInBatch = new Set<string>();
   const newIssues: Array<{
@@ -570,17 +624,29 @@ export async function reconcileBatch(
 ): Promise<void> {
   const { supabase } = actor;
 
-  const [{ data: rows }, { data: issues }] = await Promise.all([
-    supabase
-      .from("import_rows")
-      .select("id, processing_status, duplicate_class")
-      .eq("import_batch_id", batchId),
-    supabase
-      .from("import_row_issues")
-      .select("import_row_id, severity, resolution_status")
-      .eq("import_batch_id", batchId),
+  const [rows, issues] = await Promise.all([
+    selectAllPages<{ id: string; processing_status: string; duplicate_class: string | null }>(
+      (from, to) =>
+        supabase
+          .from("import_rows")
+          .select("id, processing_status, duplicate_class")
+          .eq("import_batch_id", batchId)
+          .order("source_row_number")
+          .range(from, to),
+      "reconcile_rows_failed"
+    ),
+    selectAllPages<{ import_row_id: string; severity: string; resolution_status: string }>(
+      (from, to) =>
+        supabase
+          .from("import_row_issues")
+          .select("import_row_id, severity, resolution_status")
+          .eq("import_batch_id", batchId)
+          .order("id")
+          .range(from, to),
+      "reconcile_issues_failed"
+    ),
   ]);
-  if (!rows) return;
+  if (rows.length === 0) return;
 
   const openBlocking = new Map<string, number>();
   const openWarning = new Map<string, number>();
