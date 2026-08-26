@@ -22,6 +22,12 @@ export const SETMORE_CSV_REQUIRED_HEADERS = [
 export const SETMORE_CSV_OPTIONAL_HEADERS = [
   "Cost",
   "Customer name",
+  // August 2026: Setmore's export grew three columns (observed in a real
+  // July 2026 file). Customer ID is a stable external identity — exactly
+  // what name/email matching always lacked.
+  "Customer ID",
+  "Company Name",
+  "Meeting Type",
   "Country code",
   "Phone",
   "Email",
@@ -60,6 +66,7 @@ export function setmoreCsvRowToCanonical(
 
   return {
     origin: "csv",
+    customerKeyRaw: get("Customer ID"),
     appointmentDateRaw: get("Appointment date"),
     appointmentTimeRangeRaw: get("Appointment time"),
     costRaw: get("Cost"),

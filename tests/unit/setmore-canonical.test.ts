@@ -332,3 +332,28 @@ describe("statusAvailability is a property of the transport", () => {
     expect(issues.some((i) => i.code === "missing_status")).toBe(false);
   });
 });
+
+describe("the August 2026 export format (23 columns)", () => {
+  it("maps Customer ID to the external client identity", () => {
+    const { normalized } = normalizeSetmoreRecord(
+      setmoreCsvRowToCanonical(csvRow({ "Customer ID": "CUST00042" })),
+      ctx
+    );
+    expect(normalized.externalClientId).toBe("CUST00042");
+  });
+
+  it("recognizes the three new columns instead of warning on every row", () => {
+    const { issues } = normalizeSetmoreRecord(
+      setmoreCsvRowToCanonical(
+        csvRow({ "Customer ID": "C1", "Company Name": "", "Meeting Type": "1 on 1" })
+      ),
+      ctx
+    );
+    expect(issues.some((i) => i.code === "unrecognized_columns")).toBe(false);
+  });
+
+  it("still detects the 20-column December format unchanged", () => {
+    const detect = setmoreCsvAdapter.detect(Object.keys(csvRow()));
+    expect(detect).toBeGreaterThan(0.7);
+  });
+});
