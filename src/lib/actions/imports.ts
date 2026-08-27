@@ -142,6 +142,19 @@ export async function uploadImportFile(
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
+
+  // Content check, not just extension: an .xlsx renamed to .csv is still a
+  // ZIP archive (magic bytes PK), and letting it through produced a
+  // one-column binary "mapping" screen and a crash. Renaming does not
+  // convert — say so in words.
+  if (buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4b
+      && (buffer[2] === 0x03 || buffer[2] === 0x05 || buffer[2] === 0x07)) {
+    return {
+      error:
+        "This file is an Excel workbook (.xlsx) with a .csv name — renaming a file does not convert it. Open it in Excel and use File → Save As → 'CSV UTF-8 (Comma delimited)', then upload that saved file.",
+    };
+  }
+
   const fileHash = sha256Hex(buffer);
 
   // Duplicate-file detection: same content already uploaded for this org.
