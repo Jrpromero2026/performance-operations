@@ -146,7 +146,7 @@ export default async function PayrollPage({
     <div className="space-y-6">
       <PageHeader
         title="Payroll"
-        description="Payroll preparation runs: calculate → review → approve → post → lock. Gross compensation only."
+        description="Payroll preparation runs: calculate → review → approve → post → lock. Totals here are TRAINER PAY before taxes — not department revenue."
         actions={
           <div className="flex items-center gap-2">
             <Link

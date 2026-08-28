@@ -158,7 +158,7 @@ export default async function PayrollRunPage({
       )}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {stat("Final total (gross)", formatCents(run.final_compensation_total_cents))}
+        {stat("Trainer pay total (before taxes — NOT revenue)", formatCents(run.final_compensation_total_cents))}
         {stat("Trainers", String(run.trainer_count))}
         {stat("Appointments", String(run.appointment_count))}
         {stat(
@@ -216,7 +216,7 @@ export default async function PayrollRunPage({
                   <th className="px-4 py-2 text-right font-medium">Hourly</th>
                   <th className="px-4 py-2 text-right font-medium">Team</th>
                   <th className="px-4 py-2 text-right font-medium">Adjust.</th>
-                  <th className="px-4 py-2 text-right font-medium">Final gross</th>
+                  <th className="px-4 py-2 text-right font-medium">Trainer pay</th>
                 </tr>
               </thead>
               <tbody>
