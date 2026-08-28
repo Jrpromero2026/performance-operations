@@ -91,7 +91,7 @@ export async function loadIntelligenceDataset(
   const loadedFrom = [previousPeriod.dateFrom, previousYear.dateFrom, dateFrom].sort()[0];
 
   // ---- configuration lookups (names + flags) --------------------------
-  const [servicesRes, departmentsRes, rosterRes] = await Promise.all([
+  const [servicesRes, departmentsRes, rosterRes, snapshotRes] = await Promise.all([
     supabase
       .from("services")
       .select(
@@ -107,7 +107,38 @@ export async function loadIntelligenceDataset(
       .select("trainer_id, trainers ( id, display_name, status )")
       .eq("organization_id", organizationId)
       .is("effective_to", null),
+    supabase
+      .from("organizational_snapshots")
+      .select(
+        "as_of_date, period_start, period_end, organizational_snapshot_values ( metric_key, value )",
+      )
+      .eq("organization_id", organizationId)
+      .eq("source_key", "gym_management_solutions")
+      .eq("status", "recorded")
+      .order("as_of_date", { ascending: false })
+      .limit(1),
   ]);
+
+  interface SnapshotRow {
+    as_of_date: string;
+    period_start: string;
+    period_end: string;
+    organizational_snapshot_values: { metric_key: string; value: number }[] | null;
+  }
+  const snapshotRow = (snapshotRes.data ?? [])[0] as unknown as SnapshotRow | undefined;
+  const clubSnapshot = snapshotRow
+    ? {
+        asOfDate: snapshotRow.as_of_date,
+        periodStart: snapshotRow.period_start,
+        periodEnd: snapshotRow.period_end,
+        values: new Map(
+          (snapshotRow.organizational_snapshot_values ?? []).map((v) => [
+            v.metric_key,
+            Number(v.value),
+          ]),
+        ),
+      }
+    : null;
 
   const services = new Map<string, ServiceFlags>();
   const serviceNames = new Map<string, string>();
@@ -351,6 +382,7 @@ export async function loadIntelligenceDataset(
     clientHistory,
     flags,
     readiness,
+    clubSnapshot,
     names: {
       trainers: trainerNames,
       departments: departmentNames,

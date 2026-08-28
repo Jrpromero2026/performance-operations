@@ -100,6 +100,19 @@ export interface ClientHistoryFacts {
   previousWindowActive: Set<string>;
 }
 
+/**
+ * Latest recorded GMS club snapshot, carried with its provenance so any
+ * metric built on it can state the as-of date and never present a manual
+ * reading as live data. Null when no snapshot has ever been recorded.
+ */
+export interface ClubSnapshotFacts {
+  asOfDate: string;
+  periodStart: string;
+  periodEnd: string;
+  /** metric key → value (integers; counts). */
+  values: Map<string, number>;
+}
+
 export interface IntelligenceDataset {
   organizationId: string;
   dateFrom: string;
@@ -119,6 +132,8 @@ export interface IntelligenceDataset {
   clientHistory: ClientHistoryFacts;
   flags: OrgDataFlags;
   readiness: ReadinessFacts;
+  /** Latest recorded GMS snapshot, or null when none exists. */
+  clubSnapshot: ClubSnapshotFacts | null;
   /** Display names for breakdown labels. */
   names: {
     trainers: Map<string, string>;

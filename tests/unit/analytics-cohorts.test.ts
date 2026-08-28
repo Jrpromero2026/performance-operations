@@ -61,7 +61,8 @@ function dataset(
       openPayrollBlockingIssues: 0,
       activePayrollRunsNotFinalized: 0,
     },
-    names: { trainers: new Map(), departments: new Map(), services: new Map() },
+    clubSnapshot: null,
+  names: { trainers: new Map(), departments: new Map(), services: new Map() },
   };
 }
 

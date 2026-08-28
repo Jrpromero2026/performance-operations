@@ -85,6 +85,7 @@ const DIRECTION: Record<string, MetricDirection> = {
   // utilization
   schedule_utilization_bp: "higher_is_better",
   capacity_utilization_bp: "context_dependent",
+  pt_penetration_bp: "higher_is_better",
   // readiness (point-in-time configuration state)
   trainer_assignment_coverage_bp: "higher_is_better",
   compensation_coverage_bp: "higher_is_better",

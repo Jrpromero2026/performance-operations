@@ -93,7 +93,8 @@ function dataset(overrides: Partial<IntelligenceDataset> = {}): IntelligenceData
       openPayrollBlockingIssues: 0,
       activePayrollRunsNotFinalized: 0,
     },
-    names: {
+    clubSnapshot: null,
+  names: {
       trainers: new Map([
         ["t1", "Trainer One"],
         ["t2", "Trainer Two"],
@@ -547,5 +548,45 @@ describe("executive summary", () => {
     expect(most.subject).toBeNull();
     expect(most.health).toBe("incomplete");
     expect(most.detail.length).toBeGreaterThan(0);
+  });
+});
+
+describe("pt_penetration_bp", () => {
+  const snap = (values: [string, number][]) => ({
+    asOfDate: "2026-07-31",
+    periodStart: "2026-07-01",
+    periodEnd: "2026-07-31",
+    values: new Map(values),
+  });
+  const twoClients = [
+    appt({ id: "a1", canonicalStatus: "completed", clientId: "c1" }),
+    appt({ id: "a2", canonicalStatus: "completed", clientId: "c1" }),
+    appt({ id: "a3", canonicalStatus: "completed", clientId: "c2" }),
+  ];
+
+  it("refuses to substitute total members when eligibility is not recorded", () => {
+    const out = evaluate(
+      dataset({ appointments: twoClients, clubSnapshot: snap([["club_active_members", 5000]]) }),
+      "pt_penetration_bp"
+    );
+    expect(out.health).toBe("configuration_missing");
+    expect(out.value).toBeNull();
+    expect(out.reasons?.[0]).toMatch(/NOT substituted/);
+  });
+
+  it("computes distinct completed clients over the snapshot denominator", () => {
+    const out = evaluate(
+      dataset({ appointments: twoClients, clubSnapshot: snap([["club_pt_eligible_members", 200]]) }),
+      "pt_penetration_bp"
+    );
+    expect(out.health).toBe("healthy");
+    expect(out.value).toBe(100); // 2 of 200 = 1.00%
+    expect(out.reasons?.[0]).toMatch(/manual entry/);
+    expect(out.metadata?.snapshot_as_of).toBe("2026-07-31");
+  });
+
+  it("reports configuration_missing when no snapshot exists at all", () => {
+    const out = evaluate(dataset({ appointments: twoClients }), "pt_penetration_bp");
+    expect(out.health).toBe("configuration_missing");
   });
 });
