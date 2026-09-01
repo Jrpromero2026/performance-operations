@@ -47,7 +47,7 @@ export function UploadForm({
         <label htmlFor="upload-source" className="mb-1 block text-sm font-medium text-ink">Source system</label>
         <select id="upload-source" name="source" value={source}
           onChange={(e) => setSource(e.target.value)} className={inputClass}>
-          <option value="setmore">Setmore (report export, saved as CSV)</option>
+          <option value="setmore">Setmore (report export)</option>
           <option value="acuity">Acuity (via column mapping — no dedicated adapter yet)</option>
           <option value="manual_csv">Manual CSV (column mapping)</option>
         </select>
@@ -60,13 +60,13 @@ export function UploadForm({
       </div>
       <div>
         <label htmlFor="upload-file" className="mb-1 block text-sm font-medium text-ink">
-          CSV file <span className="font-normal text-ink-muted">(max 10 MB, 10,000 rows)</span>
+          Setmore export <span className="font-normal text-ink-muted">(.xlsx or .csv · max 10 MB, 10,000 rows)</span>
         </label>
-        <input id="upload-file" name="file" type="file" accept=".csv,text/csv" required
+        <input id="upload-file" name="file" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required
           className="block w-full text-sm text-ink file:mr-3 file:h-10 file:rounded-[--radius-control] file:border-0 file:bg-surface-sunken file:px-4 file:text-sm file:font-medium file:text-ink hover:file:bg-border" />
         <p className="mt-1 text-xs text-ink-muted">
-          Setmore reports download as .xlsx — open in Excel and save as CSV
-          first. The original file is preserved unmodified as evidence.
+          Upload the file exactly as Setmore downloaded it — no conversion
+          needed. The original is preserved unmodified as evidence.
         </p>
       </div>
       <button type="submit" disabled={pending}

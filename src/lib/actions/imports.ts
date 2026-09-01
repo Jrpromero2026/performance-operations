@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { looksLikeLegacyXls, looksLikeZip, workbookToCsvText } from "@/lib/imports/workbook";
 import { parseCsv, MAX_IMPORT_ROWS } from "@/lib/imports/csv";
 import {
   detectAdapter,
@@ -134,24 +135,19 @@ export async function uploadImportFile(
     return { error: "The file exceeds the 10 MB limit." };
   }
   const filename = sanitizeFilename(file.name);
-  if (!/\.csv$/i.test(filename)) {
+  if (!/\.(csv|xlsx)$/i.test(filename)) {
     return {
       error:
-        "Only .csv files are supported in this phase. Setmore reports download as .xlsx — open and save as CSV first.",
+        "Upload the Setmore export as it downloaded (.xlsx) or as a .csv.",
     };
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  // Content check, not just extension: an .xlsx renamed to .csv is still a
-  // ZIP archive (magic bytes PK), and letting it through produced a
-  // one-column binary "mapping" screen and a crash. Renaming does not
-  // convert — say so in words.
-  if (buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4b
-      && (buffer[2] === 0x03 || buffer[2] === 0x05 || buffer[2] === 0x07)) {
+  if (looksLikeLegacyXls(buffer)) {
     return {
       error:
-        "This file is an Excel workbook (.xlsx) with a .csv name — renaming a file does not convert it. Open it in Excel and use File → Save As → 'CSV UTF-8 (Comma delimited)', then upload that saved file.",
+        "This is a legacy .xls workbook, which is not supported. Re-export from Setmore (downloads as .xlsx) and upload that file.",
     };
   }
 
@@ -179,7 +175,24 @@ export async function uploadImportFile(
     }
   }
 
-  const text = buffer.toString("utf8");
+  // Content decides the parse path (an .xlsx renamed to .csv still reads
+  // as a workbook): ZIP magic → Excel workbook, first sheet, converted
+  // server-side into the same CSV dialect the pipeline consumes. The
+  // ORIGINAL bytes are stored unmodified as the batch evidence file.
+  let text: string;
+  if (looksLikeZip(buffer)) {
+    try {
+      const converted = await workbookToCsvText(buffer);
+      text = converted.csvText;
+    } catch {
+      return {
+        error:
+          "This Excel workbook could not be read. Re-export it from Setmore and upload the fresh file; if it fails again, the format changed and needs a look.",
+      };
+    }
+  } else {
+    text = buffer.toString("utf8");
+  }
   const parsed = parseCsv(text, { maxRows: MAX_IMPORT_ROWS });
   const fatal = parsed.issues.find((i) =>
     ["empty_file", "unclosed_quote"].includes(i.code)
